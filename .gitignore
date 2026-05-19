@@ -1,0 +1,20 @@
+# Claude / Claudian session data (conversation history)
+.claude/
+.claudian/
+
+# Node modules
+node_modules/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# OS files
+.DS_Store
+Thumbs.db

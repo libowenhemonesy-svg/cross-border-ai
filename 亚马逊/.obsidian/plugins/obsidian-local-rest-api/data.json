@@ -1,0 +1,12 @@
+{
+  "port": 27124,
+  "insecurePort": 27123,
+  "enableInsecureServer": true,
+  "apiKey": "YOUR_OBSIDIAN_LOCAL_REST_API_KEY",
+  "crypto": {
+    "cert": "YOUR_SELF_SIGNED_CERT_HERE",
+    "privateKey": "YOUR_PRIVATE_KEY_HERE",
+    "publicKey": "YOUR_PUBLIC_KEY_HERE"
+  },
+  "enableSecureServer": true
+}

@@ -1,0 +1,215 @@
+{
+  "name": "跨境电商智能问答 Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "public": false,
+        "initialMessage": "你好！我是跨境电商业务助手。\n\n我可以帮你查询：\n- 亚马逊运营SOP规范\n- ERP发补货流程\n- 亚马逊政策红线\n- 选品分析方法论\n\n请直接提问，我会从公司知识库中检索最准确的答案。"
+      },
+      "id": "a0000001-e001-4000-a001-000000000001",
+      "name": "Chat Trigger",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "你是一名资深的跨境电商运营专家和AI助手。你拥有以下核心能力：\n\n1. **亚马逊运营规范**：熟悉产品上架、Listing优化、广告投放、库存管理等全链路SOP\n2. **ERP发补货流程**：精通FBA补货策略、库存周转计算、供应链异常处理\n3. **亚马逊政策红线**：了解账号健康指标、知识产权政策、评论合规等关键红线\n4. **选品分析方法论**：掌握市场容量分析、竞品调研、利润测算等选品核心方法\n\n**重要规则：**\n- 当用户询问关于公司内部规范、SOP、政策或具体操作流程时，你必须使用 Vector Store Tool 检索公司知识库中的权威信息\n- 基于检索到的上下文给出精准回答，如果知识库中没有相关信息，请诚实告知\n- 回答时引用知识库中的具体数据或规定，保持专业、清晰、结构化的回答风格\n- 使用中文回复，适当使用分点或表格组织信息"
+      },
+      "id": "a0000002-e001-4000-a002-000000000002",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "sessionKey": "={{ $json.sessionId }}",
+        "contextWindowLength": 10
+      },
+      "id": "a0000003-e001-4000-a003-000000000003",
+      "name": "Window Buffer Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [480, 500]
+    },
+    {
+      "parameters": {
+        "model": {
+          "mode": "id",
+          "value": "deepseek-chat"
+        },
+        "options": {
+          "baseURL": "https://api.deepseek.com/v1",
+          "temperature": 0.7,
+          "maxTokens": 4096
+        }
+      },
+      "id": "a0000004-e001-4000-a004-000000000004",
+      "name": "DeepSeek Chat Model (Agent)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [480, 80],
+      "credentials": {
+        "openAiApi": {
+          "id": "f9acd031-05fc-4611-b4c1-758a5af8e552",
+          "name": "DeepSeek API (OpenAI Compat)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "description": "当需要查询公司内部的跨境电商SOP、ERP发补货规范、亚马逊政策红线或选品分析方法论时，必须调用此工具进行事实检索。该工具连接公司Obsidian知识库的向量数据库，包含所有内部业务文档的标准操作流程和决策规范。输入应为完整的检索问句。",
+        "topK": 4
+      },
+      "id": "a0000005-e001-4000-a005-000000000005",
+      "name": "知识库检索工具",
+      "type": "@n8n/n8n-nodes-langchain.toolVectorStore",
+      "typeVersion": 1.1,
+      "position": [920, 500]
+    },
+    {
+      "parameters": {
+        "mode": "retrieve",
+        "memoryKey": {
+          "mode": "list",
+          "value": "obsidian_knowledge_base"
+        }
+      },
+      "id": "a0000006-e001-4000-a006-000000000006",
+      "name": "Vector Store",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreInMemory",
+      "typeVersion": 1.2,
+      "position": [1140, 500]
+    },
+    {
+      "parameters": {
+        "model": {
+          "mode": "id",
+          "value": "deepseek-chat"
+        },
+        "options": {
+          "baseURL": "https://api.deepseek.com/v1",
+          "temperature": 0.3,
+          "maxTokens": 4096
+        }
+      },
+      "id": "a0000007-e001-4000-a007-000000000007",
+      "name": "DeepSeek Chat Model (Tool)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [920, 720],
+      "credentials": {
+        "openAiApi": {
+          "id": "f9acd031-05fc-4611-b4c1-758a5af8e552",
+          "name": "DeepSeek API (OpenAI Compat)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "nomic-embed-text",
+        "baseUrl": "http://host.docker.internal:11434",
+        "options": {}
+      },
+      "id": "a0000008-e001-4000-a008-000000000008",
+      "name": "Embeddings Ollama",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOllama",
+      "typeVersion": 1,
+      "position": [1360, 680],
+      "credentials": {
+        "ollamaApi": {
+          "id": "510b56e3-9b4b-4888-b71e-969b8a8714e3",
+          "name": "Ollama"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Chat Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": []
+    },
+    "Window Buffer Memory": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DeepSeek Chat Model (Agent)": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "知识库检索工具": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vector Store": {
+      "main": [
+        [
+          {
+            "node": "知识库检索工具",
+            "type": "ai_vectorStore",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DeepSeek Chat Model (Tool)": {
+      "main": [
+        [
+          {
+            "node": "知识库检索工具",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Ollama": {
+      "main": [
+        [
+          {
+            "node": "Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner"
+  }
+}

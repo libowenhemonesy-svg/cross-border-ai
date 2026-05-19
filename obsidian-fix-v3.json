@@ -1,0 +1,337 @@
+[
+  {
+    "id": "weO4PVHvGHCoLwFx",
+    "name": "Obsidian Vault → Vector Store 注入管道",
+    "active": false,
+    "nodes": [
+      {
+        "parameters": {},
+        "id": "a1b2c3d4-e5f6-7890-abcd-ef0123456789",
+        "name": "Manual Trigger",
+        "type": "n8n-nodes-base.manualTrigger",
+        "typeVersion": 1,
+        "position": [240, 300]
+      },
+      {
+        "parameters": {
+          "method": "GET",
+          "url": "https://host.docker.internal:27124/vault/",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "Bearer YOUR_OBSIDIAN_API_KEY_HERE"
+              }
+            ]
+          },
+          "options": {
+            "allowUnauthorizedCerts": true
+          }
+        },
+        "id": "b2c3d4e5-f6a7-8901-bcde-f01234567890",
+        "name": "HTTP Get Vault List",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [460, 300]
+      },
+      {
+        "parameters": {
+          "jsCode": "// 归一化 Obsidian API 返回的数组键名 (files 或 文件)\nconst items = $input.all();\nfor (const item of items) {\n  if (item.json.文件 && Array.isArray(item.json.文件)) {\n    item.json.files = item.json.文件;\n  }\n  if (!item.json.files || !Array.isArray(item.json.files)) {\n    throw new Error(`无法在响应中找到文件数组。可用键: ${Object.keys(item.json).join(', ')}`);\n  }\n}\nreturn items;"
+        },
+        "id": "c3d4e5f6-a7b8-9012-cdef-012345678901",
+        "name": "Code Normalize Key",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [680, 300]
+      },
+      {
+        "parameters": {
+          "fieldToSplitOut": "files",
+          "include": "noOtherFields",
+          "options": {}
+        },
+        "id": "d4e5f6a7-b8c9-0123-defa-123456789012",
+        "name": "Split Out Items",
+        "type": "n8n-nodes-base.itemLists",
+        "typeVersion": 3.1,
+        "position": [900, 300]
+      },
+      {
+        "parameters": {
+          "jsCode": "// encodeURI 编码中文文件名，同时保留 / 等 URI 结构字符\nconst items = $input.all();\nfor (const item of items) {\n  item.json.encodedFile = encodeURI(item.json.files);\n}\nreturn items;"
+        },
+        "id": "f7a8b9c0-d1e2-3456-7890-abcdef012345",
+        "name": "Code URL Encode",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [1120, 300]
+      },
+      {
+        "parameters": {
+          "method": "GET",
+          "url": "={{ 'https://host.docker.internal:27124/vault/' + $json.encodedFile }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "Bearer YOUR_OBSIDIAN_API_KEY_HERE"
+              }
+            ]
+          },
+          "options": {
+            "allowUnauthorizedCerts": true,
+            "response": {
+              "response": {
+                "responseFormat": "string"
+              }
+            }
+          }
+        },
+        "id": "e5f6a7b8-c9d0-1234-efab-234567890123",
+        "name": "HTTP Fetch File",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [1340, 300]
+      },
+      {
+        "parameters": {
+          "dataType": "json",
+          "jsonMode": "allInputData",
+          "textSplittingMode": "custom"
+        },
+        "id": "f6a7b8c9-d0e1-2345-fabc-345678901234",
+        "name": "Default Data Loader",
+        "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+        "typeVersion": 1.1,
+        "position": [1340, 80]
+      },
+      {
+        "parameters": {
+          "chunkSize": 1000,
+          "chunkOverlap": 100,
+          "options": {
+            "splitCode": "markdown"
+          }
+        },
+        "id": "a7b8c9d0-e1f2-3456-abcd-456789012345",
+        "name": "Text Splitter",
+        "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+        "typeVersion": 1,
+        "position": [1120, 80]
+      },
+      {
+        "parameters": {
+          "model": "nomic-embed-text",
+          "baseUrl": "http://host.docker.internal:11434",
+          "options": {}
+        },
+        "id": "b8c9d0e1-f2a3-4567-bcde-567890123456",
+        "name": "Embeddings Ollama",
+        "type": "@n8n/n8n-nodes-langchain.embeddingsOllama",
+        "typeVersion": 1,
+        "position": [1560, 520],
+        "credentials": {
+          "ollamaApi": {
+            "id": "510b56e3-9b4b-4888-b71e-969b8a8714e3",
+            "name": "Ollama"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "mode": "insert",
+          "clearStore": false,
+          "memoryKey": {
+            "mode": "list",
+            "value": "obsidian_knowledge_base"
+          }
+        },
+        "id": "c9d0e1f2-a3b4-5678-cdef-678901234567",
+        "name": "Vector Store",
+        "type": "@n8n/n8n-nodes-langchain.vectorStoreInMemory",
+        "typeVersion": 1.2,
+        "position": [1560, 300]
+      },
+      {
+        "parameters": {
+          "jsCode": "// 格式化错误信息用于企业级错误监控\nconst errorItems = $input.all();\nconst results = [];\n\nfor (const item of errorItems) {\n  const errorMeta = {\n    workflow: 'Obsidian Vector Store Ingestion',\n    timestamp: new Date().toISOString(),\n    source: item.json.node || $node || 'HTTP Request',\n    errorMessage: item.json.errorMessage || item.json.message || JSON.stringify(item.json),\n    errorCode: item.json.errorCode || 'UNKNOWN',\n    severity: 'HIGH'\n  };\n\n  results.push({\n    json: {\n      text: [\n        `🚨 *${errorMeta.workflow} 管道错误*`,\n        `⏰ 时间: ${errorMeta.timestamp}`,\n        `🔗 来源节点: ${errorMeta.source}`,\n        `❌ 错误: ${errorMeta.errorMessage}`,\n        `🏷️ 错误码: ${errorMeta.errorCode}`,\n        `⚠️ 严重程度: ${errorMeta.severity}`\n      ].join('\\n')\n    }\n  });\n}\n\nreturn results;"
+        },
+        "id": "d0e1f2a3-b4c5-6789-defa-789012345678",
+        "name": "Code Format Error",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [460, 650]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://hooks.slack.com/services/YOUR_SLACK_WEBHOOK_URL",
+          "sendBody": true,
+          "contentType": "json",
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "text",
+                "value": "={{$json.text}}"
+              }
+            ]
+          },
+          "options": {
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "id": "e1f2a3b4-c5d6-7890-efab-890123456789",
+        "name": "Slack Error Notification",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [680, 650]
+      }
+    ],
+    "connections": {
+      "Manual Trigger": {
+        "main": [
+          [
+            {
+              "node": "HTTP Get Vault List",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "HTTP Get Vault List": {
+        "main": [
+          [
+            {
+              "node": "Code Normalize Key",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ],
+        "error": [
+          [
+            {
+              "node": "Code Format Error",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Code Normalize Key": {
+        "main": [
+          [
+            {
+              "node": "Split Out Items",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Split Out Items": {
+        "main": [
+          [
+            {
+              "node": "Code URL Encode",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Code URL Encode": {
+        "main": [
+          [
+            {
+              "node": "HTTP Fetch File",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "HTTP Fetch File": {
+        "main": [
+          [
+            {
+              "node": "Vector Store",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ],
+        "error": [
+          [
+            {
+              "node": "Code Format Error",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Text Splitter": {
+        "main": [
+          [
+            {
+              "node": "Default Data Loader",
+              "type": "ai_textSplitter",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Default Data Loader": {
+        "main": [
+          [
+            {
+              "node": "Vector Store",
+              "type": "ai_document",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Embeddings Ollama": {
+        "main": [
+          [
+            {
+              "node": "Vector Store",
+              "type": "ai_embedding",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Vector Store": {
+        "main": []
+      },
+      "Code Format Error": {
+        "main": [
+          [
+            {
+              "node": "Slack Error Notification",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Slack Error Notification": {
+        "main": []
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "callerPolicy": "workflowsFromSameOwner"
+    }
+  }
+]

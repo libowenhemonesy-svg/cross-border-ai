@@ -1,0 +1,234 @@
+{
+  "main": {
+    "id": "01c5e6f0db1f97ad",
+    "type": "split",
+    "children": [
+      {
+        "id": "6153b0cefa7e2b61",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "104d646111f9b2ec",
+            "type": "leaf",
+            "state": {
+              "type": "bases",
+              "state": {
+                "file": "未命名.base",
+                "viewName": "表格"
+              },
+              "icon": "lucide-table",
+              "title": "未命名"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "1e18b71ac4d84a4a",
+    "type": "split",
+    "children": [
+      {
+        "id": "7115f9ec8c8828ea",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "05249c4e12ca7c1e",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "文件列表"
+            }
+          },
+          {
+            "id": "86c3d815640c2b37",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "tag:#电商运营",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "搜索"
+            }
+          },
+          {
+            "id": "a54d96950edfb28e",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "书签"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "bebc1ab6841bc8bc",
+    "type": "split",
+    "children": [
+      {
+        "id": "bb7746ff44e0e34f",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "37c8d5f715ada6db",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "2026-05-17.md",
+                "collapseAll": true,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "2026-05-17 的反向链接列表"
+            }
+          },
+          {
+            "id": "f87108da92a3c6de",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "2026-05-17.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "2026-05-17 的出链列表"
+            }
+          },
+          {
+            "id": "b4dcaa85003a3cec",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "标签"
+            }
+          },
+          {
+            "id": "024a10da37cc850c",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "添加笔记属性"
+            }
+          },
+          {
+            "id": "637a9392316982f1",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "2026-05-17.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "2026-05-17 的大纲"
+            }
+          },
+          {
+            "id": "99798a2015089099",
+            "type": "leaf",
+            "state": {
+              "type": "claudian-view",
+              "state": {},
+              "icon": "bot",
+              "title": "Claudian"
+            }
+          }
+        ],
+        "currentTab": 5
+      }
+    ],
+    "direction": "horizontal",
+    "width": 477.5
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:打开快速切换": false,
+      "graph:查看关系图谱": false,
+      "canvas:新建白板": false,
+      "daily-notes:打开/创建今天的日记": false,
+      "templates:插入模板": false,
+      "command-palette:打开命令面板": false,
+      "bases:新建数据库": false,
+      "realclaudian:Open Claudian": false
+    }
+  },
+  "active": "104d646111f9b2ec",
+  "lastOpenFiles": [
+    "未命名 1.base",
+    "未命名.canvas",
+    "未命名.base",
+    "2026-05-17.md",
+    "未命名 2.base",
+    "未命名",
+    "未命名 1",
+    "亚马逊跨境电商入门指南.md.tmp.3688.b4ba3f7b877a",
+    "亚马逊跨境电商入门指南.md.tmp.3688.8582689f24c5",
+    "亚马逊广告ACOS优化实战.md.tmp.3688.54eecd92ae75",
+    "亚马逊广告ACOS优化实战.md.tmp.3688.486049802990",
+    "亚马逊新品广告预算分配指南.md",
+    "亚马逊新品广告预算分配指南.md.tmp.3688.cf6c35ee87fd",
+    "亚马逊竞品分析方法论.md",
+    "亚马逊Listing优化完全指南.md",
+    "亚马逊合规风控与账号安全.md",
+    "亚马逊财务管理与利润核算.md",
+    "亚马逊站外引流全攻略.md",
+    "亚马逊供应链与1688采购实战.md",
+    "04_亚马逊云科技AWS概览.md",
+    "03_亚马逊中国站海外购详情.md",
+    "02_亚马逊全球开店.md",
+    "00_目录索引.md",
+    "01_亚马逊官网总览.md",
+    "亚马逊跨境电商入门指南.md",
+    "亚马逊跨境电商期刊与学术资源.md",
+    "2026-05-15.md",
+    "未命名 2.canvas",
+    "未命名 1.canvas",
+    "亚马逊关键词调研方法.md",
+    "亚马逊品牌注册与品牌保护.md",
+    "亚马逊FBA库存管理.md",
+    "亚马逊广告ACOS优化实战.md",
+    "亚马逊选品实战方法论.md",
+    "欢迎.md"
+  ]
+}

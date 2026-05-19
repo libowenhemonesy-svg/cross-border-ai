@@ -1,0 +1,16 @@
+{
+  "providerConfigs": {
+    "claude": {
+      "cliPath": "C:\\Users\\里\\AppData\\Roaming\\npm\\node_modules\\@anthropic-ai\\claude-code\\cli-wrapper.cjs"
+    }
+  },
+  "tabManagerState": {
+    "openTabs": [
+      {
+        "tabId": "tab-1778836426165-5cmpm86",
+        "conversationId": "conv-1778836525775-g5kksvwyg"
+      }
+    ],
+    "activeTabId": "tab-1778836426165-5cmpm86"
+  }
+}
