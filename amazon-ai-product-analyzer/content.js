@@ -73,50 +73,66 @@ function extractProductInfo() {
  * @returns {string} 图片URL或空字符串
  */
 function extractImage() {
-  // 方法1：主图元素
-  const mainSelectors = [
-    '#landingImage',
-    '#imgBlkFront',
-    '#main-image',
-    '#product-image',
-    '#imageBlock img',
-    '#landingImageWrapper img',
-    '.a-dynamic-image',
-    '#imageBlock img.a-dynamic-image',
-    'img[data-old-hires]',
-    '#mainImageContainer img',
-    '#imageBlock .a-spacing-small img'
-  ];
+  console.log('开始提取图片...');
 
-  for (const selector of mainSelectors) {
-    const el = document.querySelector(selector);
-    if (el) {
-      // 优先获取高清图
-      const hires = el.getAttribute('data-old-hires') || el.getAttribute('data-a-dynamic-image');
-      if (hires && hires.startsWith('http')) {
-        // data-a-dynamic-image 是 JSON 格式
-        if (hires.startsWith('{')) {
-          try {
-            const urls = Object.keys(JSON.parse(hires));
-            if (urls.length > 0) return urls[0];
-          } catch (e) {}
-        }
-        return hires;
+  // 方法1：直接查找主图 img
+  const mainImg = document.querySelector('#landingImage');
+  if (mainImg) {
+    console.log('找到 #landingImage');
+    if (mainImg.src && mainImg.src.startsWith('http')) {
+      return mainImg.src;
+    }
+    // 检查 data-old-hires
+    const hires = mainImg.getAttribute('data-old-hires');
+    if (hires) return hires;
+  }
+
+  // 方法2：查找图片容器中的 img
+  const imgBlock = document.querySelector('#imageBlock');
+  if (imgBlock) {
+    const imgs = imgBlock.querySelectorAll('img');
+    console.log('找到 #imageBlock 中的图片数量:', imgs.length);
+    for (const img of imgs) {
+      // 跳过小图标和精灵图
+      if (img.src && img.src.includes('media-amazon.com') && !img.src.includes('sprite')) {
+        return img.src;
       }
-      if (el.src && el.src.startsWith('http')) {
-        return el.src;
-      }
+      // 检查 data-old-hires
+      const hires = img.getAttribute('data-old-hires');
+      if (hires) return hires;
     }
   }
 
-  // 方法2：查找所有包含商品图片的 img 标签
-  const allImages = document.querySelectorAll('#imgTagWrapperId img, #imageBlock img');
-  for (const img of allImages) {
-    if (img.src && img.src.includes('media-amazon.com') && !img.src.includes('sprite')) {
+  // 方法3：查找所有带 data-old-hires 的图片
+  const allHires = document.querySelectorAll('img[data-old-hires]');
+  console.log('找到 data-old-hires 图片数量:', allHires.length);
+  for (const img of allHires) {
+    const hires = img.getAttribute('data-old-hires');
+    if (hires && hires.includes('media-amazon.com')) {
+      return hires;
+    }
+  }
+
+  // 方法4：查找所有 Amazon CDN 图片
+  const allAmazonImgs = document.querySelectorAll('img[src*="media-amazon.com"]');
+  console.log('找到 Amazon CDN 图片数量:', allAmazonImgs.length);
+  for (const img of allAmazonImgs) {
+    // 跳过太小的图片（可能是图标）
+    if (img.naturalWidth > 100 || img.width > 100) {
       return img.src;
     }
   }
 
+  // 方法5：查找主图区域的任何图片
+  const wrapper = document.querySelector('#imgTagWrapperId') || document.querySelector('#mainImageContainer');
+  if (wrapper) {
+    const img = wrapper.querySelector('img');
+    if (img && img.src) {
+      return img.src;
+    }
+  }
+
+  console.log('未找到图片');
   return '';
 }
 
