@@ -1,0 +1,13 @@
+prefix=g:/yamaxun/gangweiceshi/.conda/Library
+exec_prefix=g:/yamaxun/gangweiceshi/.conda/Library
+libdir=g:/yamaxun/gangweiceshi/.conda/Library/lib
+sharedlibdir=g:/yamaxun/gangweiceshi/.conda/Library/lib
+includedir=g:/yamaxun/gangweiceshi/.conda/Library/include
+
+Name: zlib
+Description: zlib compression library
+Version: 1.3.1
+
+Requires:
+Libs: -L${libdir} -L${sharedlibdir} -lz
+Cflags: -I${includedir}

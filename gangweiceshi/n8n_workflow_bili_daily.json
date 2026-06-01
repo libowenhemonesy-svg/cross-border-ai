@@ -1,0 +1,116 @@
+{
+  "name": "全平台每日知识沉淀 — B站 + 微信 统一日报",
+  "nodes": [
+    {
+      "id": "a1b2c3d4-1111-4000-8000-000000000001",
+      "name": "每天上午10点触发",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [250, 300],
+      "parameters": {
+        "rule": {
+          "interval": [{
+            "field": "cronExpression",
+            "expression": "0 10 * * *"
+          }]
+        }
+      }
+    },
+    {
+      "id": "a1b2c3d4-2222-4000-8000-000000000002",
+      "name": "B站 + 微信 统一日报",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [500, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "http://python_api:8000/api/unified_daily",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {"name": "max_videos", "value": 10},
+            {"name": "max_articles", "value": 2}
+          ]
+        },
+        "sendBody": false,
+        "options": {
+          "timeout": 900000,
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "a1b2c3d4-3333-4000-8000-000000000003",
+      "name": "保存日报到 Obsidian",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [750, 200],
+      "parameters": {
+        "method": "POST",
+        "url": "http://python_api:8000/api/process_content",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {"name": "title", "value": "={{ $json.report_title }}"},
+            {"name": "url", "value": ""},
+            {"name": "raw_text", "value": "={{ $json.report_text }}"}
+          ]
+        },
+        "options": {
+          "timeout": 60000
+        }
+      }
+    },
+    {
+      "id": "a1b2c3d4-4444-4000-8000-000000000004",
+      "name": "推送日报到飞书",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [750, 400],
+      "parameters": {
+        "method": "POST",
+        "url": "http://python_api:8000/api/feishu/send",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {"name": "title", "value": "={{ $json.report_title }}"},
+            {"name": "content", "value": "={{ $json.report_text }}"}
+          ]
+        },
+        "options": {
+          "timeout": 60000
+        }
+      }
+    }
+  ],
+  "connections": {
+    "每天上午10点触发": {
+      "main": [
+        [
+          {"node": "B站 + 微信 统一日报", "type": "main", "index": 0}
+        ]
+      ]
+    },
+    "B站 + 微信 统一日报": {
+      "main": [
+        [
+          {"node": "保存日报到 Obsidian", "type": "main", "index": 0},
+          {"node": "推送日报到飞书", "type": "main", "index": 0}
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "timezone": "Asia/Shanghai",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "tags": [
+    {"name": "B站"},
+    {"name": "微信公众号"},
+    {"name": "自动化"},
+    {"name": "知识沉淀"},
+    {"name": "飞书推送"}
+  ],
+  "staticData": null
+}

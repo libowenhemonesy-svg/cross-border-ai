@@ -1,0 +1,119 @@
+{
+  "name": "Bilibili to Obsidian Demo",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "4f3f1a3b-1f45-4a16-a7f5-8d7c2d3b2e01",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f08a3d01-22d4-4c57-9009-cfb6a8e4a3a1",
+              "name": "url",
+              "value": "https://www.bilibili.com/video/BV1RTGs6ZEf6/?spm_id_from=333.337.search-card.all.click&vd_source=3d47bbd580a69dd39e159af6d06f4161",
+              "type": "string"
+            },
+            {
+              "id": "85793d6a-c938-4aa0-a444-4b7f4c3a65fd",
+              "name": "cookiePath",
+              "value": "C:\\Users\\里\\Downloads\\cookies.txt",
+              "type": "string"
+            },
+            {
+              "id": "89b28b7f-280b-4862-b2c2-dc6f86c7aa8b",
+              "name": "vaultPath",
+              "value": "G:\\yamaxun\\gangweiceshi2\\obsidian_vault",
+              "type": "string"
+            },
+            {
+              "id": "8a346823-7dd3-43dd-b7a1-a8706cc67270",
+              "name": "scriptPath",
+              "value": "G:\\yamaxun\\gangweiceshi2\\bilibili_obsidian_demo\\bilibili_to_obsidian.py",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d44fc192-f617-44b3-9487-85f21791d5c0",
+      "name": "Set Demo Inputs",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "command": "python \"{{$json.scriptPath}}\" --url \"{{$json.url}}\" --cookie \"{{$json.cookiePath}}\" --vault \"{{$json.vaultPath}}\""
+      },
+      "id": "fc4d7527-fb5e-450f-9ffb-5cc8d2477618",
+      "name": "Run Bilibili to Obsidian Script",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        780,
+        300
+      ],
+      "notes": "Requires local/self-hosted n8n with Execute Command enabled. If n8n runs in Docker, mount the G: directory and update paths."
+    },
+    {
+      "parameters": {
+        "content": "## 使用说明\n\n1. 导入该 workflow。\n2. 打开 `Set Demo Inputs` 节点，确认 url、cookiePath、vaultPath、scriptPath。\n3. 点击 `Execute Workflow`。\n4. 生成的 Markdown 会写入 Obsidian Vault 的 `Bilibili` 文件夹。\n\n注意：n8n Cloud 通常不能使用 Execute Command。Docker 运行时需要把 Windows 路径挂载进容器。",
+        "height": 300,
+        "width": 360
+      },
+      "id": "9512a6f2-0803-414f-b625-b45ca93d3ad4",
+      "name": "Workflow Notes",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        460,
+        -20
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set Demo Inputs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Demo Inputs": {
+      "main": [
+        [
+          {
+            "node": "Run Bilibili to Obsidian Script",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2026-05-26T00:00:00.000Z",
+  "versionId": "d7a1f9dc-582c-4d55-a780-28d1c7f715bb"
+}

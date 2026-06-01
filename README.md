@@ -23,6 +23,14 @@
 ## 项目结构
 
 ```
+├── docker-compose.yml                  # 开源版 n8n Docker 部署配置
+├── data_extractors/                    # 跨平台内容抓取服务（Python）
+│   └── requirements.txt                # FastAPI + httpx + yt-dlp + openai
+├── my_agent/                           # LangGraph 智能 Agent 模块
+├── langgraph.json                      # LangGraph CLI 配置
+├── langgraph_demo.py                   # LangGraph 示例
+├── scrapling_demo.py                   # Scrapling 网页抓取演示
+├── scrapling_入门.py                    # Scrapling 入门教程
 ├── agentic-rag-workflow.json          # Agentic RAG 主工作流（n8n）
 ├── obsidian-fix-v3.json               # Obsidian → 向量库 数据注入管道
 ├── exported-rag.json / fixed-rag.json # RAG 工作流历史版本
@@ -31,7 +39,8 @@
 │   ├── final-switch-to-openai.js      # 模型切换脚本 (DeepSeek → OpenAI)
 │   ├── create-deepseek-cred.js        # 凭证创建脚本
 │   ├── fix-agent-text.js              # Agent Prompt 直接修改脚本
-│   └── ...
+│   ├── fix-prompt.js                  # Agent Prompt 修复脚本
+│   └── add-code-node.js               # 注入管道节点添加脚本
 ├── fix-workflow.sql                   # SQL 级工作流修复
 ├── 亚马逊/                              # Obsidian 知识库（16篇专业文档）
 │   ├── 亚马逊选品实战方法论.md
@@ -51,10 +60,29 @@
 
 ### 环境要求
 
+- Docker Desktop（推荐）或 Node.js ≥ 20
 - n8n (≥ v1.0) + LangChain 节点
 - Ollama (本地 Embedding 模型)
 - Obsidian + Local REST API 插件
-- DeepSeek API Key 或 OpenAI API Key
+- DeepSeek API Key 或兼容 OpenAI 接口的国内模型（硅基流动、阿里云百炼等）
+
+### 部署 n8n
+
+```bash
+# 方式一：Docker Compose（推荐，数据持久化）
+docker compose up -d
+
+# 方式二：Docker 命令行
+docker run -d --name n8n -p 5678:5678 -v n8n_data:/home/node/.n8n docker.n8n.io/n8nio/n8n
+```
+
+访问 `http://localhost:5678` 完成初始化设置。
+
+### 安装 Python 依赖
+
+```bash
+pip install -r data_extractors/requirements.txt
+```
 
 ### 导入工作流
 

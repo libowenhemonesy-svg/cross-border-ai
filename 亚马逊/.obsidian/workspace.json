@@ -11,13 +11,14 @@
             "id": "104d646111f9b2ec",
             "type": "leaf",
             "state": {
-              "type": "bases",
+              "type": "markdown",
               "state": {
-                "file": "未命名.base",
-                "viewName": "表格"
+                "file": "2026-05-26.md",
+                "mode": "source",
+                "source": false
               },
-              "icon": "lucide-table",
-              "title": "未命名"
+              "icon": "lucide-file",
+              "title": "2026-05-26"
             }
           }
         ]
@@ -195,9 +196,11 @@
   },
   "active": "104d646111f9b2ec",
   "lastOpenFiles": [
+    "未命名 1.canvas",
+    "2026-05-26.md",
+    "未命名.base",
     "未命名 1.base",
     "未命名.canvas",
-    "未命名.base",
     "2026-05-17.md",
     "未命名 2.base",
     "未命名",
@@ -223,7 +226,6 @@
     "亚马逊跨境电商期刊与学术资源.md",
     "2026-05-15.md",
     "未命名 2.canvas",
-    "未命名 1.canvas",
     "亚马逊关键词调研方法.md",
     "亚马逊品牌注册与品牌保护.md",
     "亚马逊FBA库存管理.md",

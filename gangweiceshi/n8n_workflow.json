@@ -1,0 +1,71 @@
+{
+  "name": "内容采集 → AI 处理管道",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "collect_content",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "550e8400-e29b-41d4-a716-446655440001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [320, 300],
+      "webhookId": "550e8400-e29b-41d4-a716-446655440002"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 从 Webhook 原始数据中提取 body 并格式化\nconst items = $input.all();\nfor (const item of items) {\n  // Webhook 可能把 JSON body 放在顶层或 body 子字段\n  const body = item.json.body || item.json;\n  item.json = {\n    title: body.title || '',\n    url: body.url || '',\n    raw_text: body.raw_text || ''\n  };\n}\nreturn items;"
+      },
+      "id": "770e8400-e29b-41d4-a716-446655440004",
+      "name": "Format Body",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [580, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://python_api:8000/api/process_content",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ title: $json.title, url: $json.url, raw_text: $json.raw_text }) }}",
+        "options": {}
+      },
+      "id": "660e8400-e29b-41d4-a716-446655440003",
+      "name": "HTTP Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [840, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Format Body",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Body": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

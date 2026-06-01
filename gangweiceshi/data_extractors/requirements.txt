@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+httpx
+yt-dlp
+openai
+qdrant-client
+langchain-text-splitters
+scrapling
+browserforge
+curl_cffi
+playwright

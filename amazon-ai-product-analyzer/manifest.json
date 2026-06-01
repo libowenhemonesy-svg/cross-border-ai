@@ -1,0 +1,41 @@
+{
+  "manifest_version": 3,
+  "name": "Amazon AI Product Analyzer",
+  "version": "1.0.0",
+  "description": "Amazon商品页AI选品分析插件 - 提取商品信息并展示分析结果",
+
+  // 插件图标配置
+  "icons": {
+    "16": "icons/icon.svg",
+    "32": "icons/icon.svg",
+    "48": "icons/icon.svg",
+    "128": "icons/icon.svg"
+  },
+
+  // 插件弹窗配置
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Amazon AI Product Analyzer"
+  },
+
+  // 权限配置 - 只申请必要权限
+  "permissions": [
+    "activeTab",    // 访问当前活动标签页
+    "scripting"     // 注入脚本权限
+  ],
+
+  // 主机权限 - 允许访问Amazon网站和本地后端
+  "host_permissions": [
+    "https://www.amazon.com/*",
+    "http://localhost:8010/*"
+  ],
+
+  // 内容脚本配置 - 自动注入到Amazon页面
+  "content_scripts": [
+    {
+      "matches": ["https://www.amazon.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_end"
+    }
+  ]
+}

@@ -1,0 +1,172 @@
+{
+  "name": "Bilibili to Obsidian - Docker HTTP",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "26c2dba8-99bb-4f75-bd1e-d5eae048a001",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a621e270-b66a-491a-b9a9-2e65ffb1f517",
+              "name": "url",
+              "value": "https://www.bilibili.com/video/BV1RTGs6ZEf6/",
+              "type": "string"
+            },
+            {
+              "id": "b93e5765-9ba2-474e-82b8-e1d4d5e8669d",
+              "name": "use_scrapling",
+              "value": true,
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "694d3fdf-e22a-4437-a81e-281294676002",
+      "name": "Set Bilibili URL",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://python_api:8000/api/process_bilibili",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"url\": \"{{ $json.url }}\",\n  \"use_scrapling\": {{ $json.use_scrapling }}\n}",
+        "options": {
+          "timeout": 180000
+        }
+      },
+      "id": "77dc0877-4b44-49be-ae99-5534ff4dc003",
+      "name": "Process Bilibili via Python API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        780,
+        300
+      ],
+      "notes": "Runs inside Docker network. n8n and python_api are both on gangweiceshi_default, so http://python_api:8000 is reachable from n8n."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e77aa23d-5652-4cf9-a471-a520aa90519d",
+              "name": "status",
+              "value": "={{ $json.status }}",
+              "type": "string"
+            },
+            {
+              "id": "0ce0f9a9-d4fd-4981-b2e6-b37e2c3e39c8",
+              "name": "filepath",
+              "value": "={{ $json.filepath }}",
+              "type": "string"
+            },
+            {
+              "id": "a1f00ecb-98e1-4236-b69d-1a7d71d1e0a0",
+              "name": "video_title",
+              "value": "={{ $json.video_title }}",
+              "type": "string"
+            },
+            {
+              "id": "c6b0dbfd-2a9b-4d10-a8bc-50523f29f406",
+              "name": "summary",
+              "value": "={{ $json.summary }}",
+              "type": "string"
+            },
+            {
+              "id": "f887cc89-d7f4-485f-8017-691ec0636b59",
+              "name": "tags",
+              "value": "={{ $json.tags }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5c7e5bbd-2024-4960-9597-a7cf56f36ed9",
+      "name": "Keep Result Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1060,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Docker 版说明\n\n当前环境已验证：\n\n- n8n 容器：`n8n`\n- Python API 容器：`python_api`\n- 两者在同一 Docker 网络：`gangweiceshi_default`\n- n8n 容器内没有 Python，因此不使用 Execute Command 跑脚本\n- 使用 HTTP Request 调用：`http://python_api:8000/api/process_bilibili`\n\nPython API 已挂载：\n\n- Obsidian：`/obsidian`\n- B 站 Cookie：`/cookies/bilibili.txt`\n\n执行后 Markdown 由 python_api 写入 Obsidian。单个视频深度处理可能需要 45-180 秒。",
+        "height": 420,
+        "width": 460
+      },
+      "id": "fa369ff7-844a-4730-9d5f-e526b95f95ad",
+      "name": "Docker Notes",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        460,
+        -180
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set Bilibili URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Bilibili URL": {
+      "main": [
+        [
+          {
+            "node": "Process Bilibili via Python API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Bilibili via Python API": {
+      "main": [
+        [
+          {
+            "node": "Keep Result Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2026-05-26T00:00:00.000Z",
+  "versionId": "7ce5eb7c-79e8-49f2-ae52-061a6408f350"
+}

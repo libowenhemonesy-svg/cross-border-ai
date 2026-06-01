@@ -1,0 +1,551 @@
+/* 全局样式重置 */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* 基础字体设置 */
+html,
+body {
+  width: 720px;
+  font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #333;
+  background-color: #f5f5f5;
+}
+
+/* 主容器样式 */
+.container {
+  width: 720px;
+  min-height: 400px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+/* 顶部标题区域 */
+.header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 20px;
+  text-align: center;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 5px;
+}
+
+.logo-icon {
+  width: 28px;
+  height: 28px;
+}
+
+.logo h1 {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.subtitle {
+  font-size: 12px;
+  opacity: 0.9;
+  margin-top: 5px;
+}
+
+/* 操作区域 */
+.action-section {
+  padding: 20px;
+  text-align: center;
+}
+
+.extract-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.extract-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.extract-btn:active {
+  transform: translateY(0);
+}
+
+.extract-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.btn-icon {
+  width: 18px;
+  height: 18px;
+}
+
+/* 提示区域 */
+.message-section {
+  padding: 0 20px 20px;
+}
+
+.message-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 8px;
+  color: #856404;
+}
+
+.message-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.message-content p {
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+/* 隐藏状态 */
+.hidden {
+  display: none !important;
+}
+
+/* 商品信息展示区域 */
+.product-info {
+  padding: 0 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* 信息卡片样式 */
+.info-card {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 15px;
+  border: 1px solid #e9ecef;
+}
+
+/* 商品图片卡片 */
+.image-card {
+  padding: 8px;
+  text-align: center;
+}
+
+.product-image {
+  max-width: 120px;
+  max-height: 120px;
+  border-radius: 6px;
+  object-fit: contain;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.card-icon {
+  width: 18px;
+  height: 18px;
+  color: #667eea;
+}
+
+.card-header h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #495057;
+}
+
+.card-content {
+  font-size: 13px;
+  color: #333;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+/* 翻译文本样式 */
+.card-translation {
+  font-size: 12px;
+  color: #667eea;
+  line-height: 1.4;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed #dee2e6;
+  font-style: italic;
+}
+
+/* 价格和评分行 */
+.info-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.price-card {
+  background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+  border-color: #c3e6cb;
+}
+
+.price-text {
+  font-size: 18px;
+  font-weight: 700;
+  color: #155724;
+}
+
+.rating-card {
+  background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+  border-color: #ffeaa7;
+}
+
+.rating-text {
+  font-size: 18px;
+  font-weight: 700;
+  color: #856404;
+}
+
+/* ASIN样式 */
+.asin-text {
+  font-family: 'Courier New', monospace;
+  font-weight: 600;
+  color: #495057;
+  background: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+/* 五点描述列表 */
+.bullets-list {
+  list-style: none;
+  padding: 0;
+}
+
+.bullets-list li {
+  font-size: 12px;
+  color: #495057;
+  padding: 8px 0;
+  border-bottom: 1px dashed #dee2e6;
+  line-height: 1.4;
+}
+
+.bullets-list li:last-child {
+  border-bottom: none;
+}
+
+.bullets-list li::before {
+  content: "•";
+  color: #667eea;
+  font-weight: bold;
+  margin-right: 8px;
+}
+
+.empty-item {
+  color: #6c757d !important;
+  font-style: italic;
+}
+
+.empty-item::before {
+  content: "" !important;
+  margin-right: 0 !important;
+}
+
+/* 评论卡片样式 */
+.review-card {
+  position: relative;
+}
+
+.show-reviews-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 5px;
+  margin-left: auto;
+  color: #667eea;
+  transition: color 0.3s ease;
+}
+
+.show-reviews-btn:hover {
+  color: #764ba2;
+}
+
+.show-reviews-btn .btn-icon {
+  width: 18px;
+  height: 18px;
+}
+
+/* 评论区域样式 */
+.reviews-section {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px dashed #dee2e6;
+}
+
+.reviews-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.reviews-header h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #495057;
+}
+
+.close-reviews-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 3px;
+  color: #6c757d;
+  transition: color 0.3s ease;
+}
+
+.close-reviews-btn:hover {
+  color: #dc3545;
+}
+
+.close-reviews-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* 评论列表 */
+.reviews-list {
+  max-height: 200px;
+  overflow-y: auto;
+  padding-right: 5px;
+}
+
+.reviews-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.reviews-list::-webkit-scrollbar-thumb {
+  background: #dee2e6;
+  border-radius: 3px;
+}
+
+.reviews-list::-webkit-scrollbar-thumb:hover {
+  background: #adb5bd;
+}
+
+/* 单条评论样式 */
+.review-item {
+  padding: 10px;
+  margin-bottom: 8px;
+  background: white;
+  border-radius: 6px;
+  border: 1px solid #e9ecef;
+}
+
+.review-item:last-child {
+  margin-bottom: 0;
+}
+
+.review-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.review-rating {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.review-stars {
+  color: #ffc107;
+  font-size: 12px;
+}
+
+.review-date {
+  font-size: 11px;
+  color: #6c757d;
+}
+
+.review-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #495057;
+  margin-bottom: 4px;
+}
+
+.review-content {
+  font-size: 11px;
+  color: #333;
+  line-height: 1.4;
+}
+
+.loading-text {
+  text-align: center;
+  color: #6c757d;
+  font-size: 12px;
+  padding: 10px;
+}
+
+/* 差评摘要 */
+.reviews-summary {
+  font-size: 12px;
+  color: #dc3545;
+  font-weight: 600;
+  margin-bottom: 10px;
+  padding: 6px 10px;
+  background: #fff5f5;
+  border-radius: 4px;
+  border-left: 3px solid #dc3545;
+}
+
+/* 差评样式 */
+.negative-review {
+  border-left: 3px solid #dc3545;
+  background: #fff8f8;
+}
+
+.negative-stars {
+  color: #dc3545 !important;
+}
+
+.rating-text {
+  font-size: 11px;
+  color: #dc3545;
+  font-weight: 600;
+  margin-left: 5px;
+}
+
+/* 五点描述翻译样式 */
+.bullet-translated {
+  font-size: 13px;
+  color: #333;
+  line-height: 1.5;
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+
+.bullet-original {
+  font-size: 11px;
+  color: #999;
+  line-height: 1.3;
+  font-style: italic;
+}
+
+/* URL样式 */
+.url-text {
+  font-size: 11px;
+  color: #667eea;
+  word-break: break-all;
+  text-decoration: underline;
+}
+
+/* 发送按钮区域 */
+.send-section {
+  padding: 0 20px 20px;
+  text-align: center;
+}
+
+.send-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.send-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+}
+
+.send-btn:active {
+  transform: translateY(0);
+}
+
+.send-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.send-hint {
+  font-size: 11px;
+  color: #6c757d;
+  margin-top: 8px;
+}
+
+/* 底部信息 */
+.footer {
+  padding: 15px 20px;
+  text-align: center;
+  background: #f8f9fa;
+  border-top: 1px solid #e9ecef;
+}
+
+.footer p {
+  font-size: 11px;
+  color: #6c757d;
+}
+
+/* 加载动画 */
+.loading {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #f3f3f3;
+  border-top: 2px solid #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-right: 8px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* 响应式调整 */
+@media (max-width: 360px) {
+  .container {
+    width: 100%;
+    border-radius: 0;
+  }
+}

@@ -18,7 +18,7 @@
           "parameters": [
             {
               "name": "Authorization",
-              "value": "Bearer YOUR_OBSIDIAN_API_KEY_HERE"
+              "value": "Bearer edae91bfea5082b09ec4ee1136c95e6ae49c09b3f30ecaadad98b7b8d1255a9e"
             }
           ]
         },
@@ -73,7 +73,7 @@
           "parameters": [
             {
               "name": "Authorization",
-              "value": "Bearer YOUR_OBSIDIAN_API_KEY_HERE"
+              "value": "Bearer edae91bfea5082b09ec4ee1136c95e6ae49c09b3f30ecaadad98b7b8d1255a9e"
             }
           ]
         },

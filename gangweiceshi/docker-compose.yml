@@ -1,0 +1,57 @@
+services:
+  frontend:
+    build:
+      context: ./frontend
+    container_name: frontend
+    restart: unless-stopped
+    depends_on:
+      - python_api
+    ports:
+      - "3000:80"
+
+  n8n:
+    image: docker.n8n.io/n8nio/n8n
+    container_name: n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - NODE_ENV=production
+      - N8N_DIAGNOSTICS_ENABLED=false
+      - N8N_PERSONALIZATION_ENABLED=false
+    volumes:
+      - ./n8n_data:/home/node/.n8n
+      - ./obsidian_vault:/obsidian
+
+  python_api:
+    build:
+      context: ./data_extractors
+    container_name: python_api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - AI_API_KEY=sk-mmdadfqwfpteytndetrcuemqadjuipkiojfhboiomhrmnrcd
+      - FEISHU_WEBHOOK_URL=https://open.feishu.cn/open-apis/bot/v2/hook/f13a2df7-2e73-43fa-8e92-c967f9242fca
+      - FEISHU_WEBHOOK_SECRET=
+    volumes:
+      - ./obsidian_vault:/obsidian
+      - ./data_extractors/cookies.txt:/cookies/bilibili.txt
+
+  vector_db:
+    image: qdrant/qdrant:latest
+    container_name: vector_db
+    restart: unless-stopped
+    ports:
+      - "6333:6333"
+    volumes:
+      - ./qdrant_data:/qdrant/storage
+
+  cloudflare_tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflare_tunnel
+    restart: unless-stopped
+    command: tunnel --no-autoupdate --protocol http2 --url http://n8n:5678
