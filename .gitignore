@@ -15,6 +15,23 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 
+# Conda 环境
+.conda/
+.condatmp/
+
+# LangGraph API 状态
+.langgraph_api/
+
+# 二进制文件
+*.dll
+*.exe
+*.pdb
+*.pyd
+*.pckl
+*.node
+*.lib
+*.exp
+
 # OS files
 .DS_Store
 Thumbs.db
