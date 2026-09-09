@@ -233,7 +233,8 @@ h2 {
   color: #374151;
 }
 
-.field input {
+.field input,
+.field textarea {
   height: 42px;
   border: 1px solid #cbd5e1;
   border-radius: 8px;
@@ -242,7 +243,8 @@ h2 {
   background: white;
 }
 
-.field input:focus {
+.field input:focus,
+.field textarea:focus {
   border-color: #2563eb;
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
 }

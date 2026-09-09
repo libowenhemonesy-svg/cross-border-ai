@@ -34,8 +34,8 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - AI_API_KEY=sk-mmdadfqwfpteytndetrcuemqadjuipkiojfhboiomhrmnrcd
-      - FEISHU_WEBHOOK_URL=https://open.feishu.cn/open-apis/bot/v2/hook/f13a2df7-2e73-43fa-8e92-c967f9242fca
+      - AI_API_KEY=${AI_API_KEY:?Set your own AI_API_KEY}
+      - FEISHU_WEBHOOK_URL=${FEISHU_WEBHOOK_URL:-}
       - FEISHU_WEBHOOK_SECRET=
     volumes:
       - ./obsidian_vault:/obsidian

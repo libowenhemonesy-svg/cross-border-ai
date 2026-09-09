@@ -3,6 +3,36 @@ export type HealthResponse = {
   vector_db?: string;
 };
 
+export type AskResponse = {
+  status: "answered" | "insufficient_context" | "no_data";
+  answer: string;
+  citation_ids: number[];
+  sources: (SearchResultItem & { id: number })[];
+};
+
+export type ContentResponse = {
+  status: string;
+  filepath: string;
+  summary: string;
+  key_points: string[];
+  modules: { title: string; items: string[] }[];
+  tags: string[];
+};
+
+export function processContent(payload: { title: string; url: string; raw_text: string }) {
+  return request<ContentResponse>("/api/process_content", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function askKnowledge(question: string) {
+  return request<AskResponse>("/api/ask_knowledge", {
+    method: "POST",
+    body: JSON.stringify({ question })
+  });
+}
+
 export type BiliProcessResponse = {
   status: string;
   filepath: string;

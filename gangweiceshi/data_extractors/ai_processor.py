@@ -8,6 +8,7 @@ import json
 import logging
 from dataclasses import dataclass, field
 from openai import AsyncOpenAI, RateLimitError, APITimeoutError, InternalServerError
+from rag_graph import KnowledgeError
 
 logger = logging.getLogger(__name__)
 
@@ -139,7 +140,7 @@ For EACH selected sentence, provide a structured object with:
 """
 
     def __init__(self, api_key: str, model: str = "deepseek-ai/DeepSeek-V3"):
-        self.client = AsyncOpenAI(api_key=api_key, base_url=self.BASE_URL)
+        self.client = AsyncOpenAI(api_key=api_key, base_url=self.BASE_URL) if api_key else None
         self.model = model
 
     # ------------------------------------------------------------------
@@ -237,6 +238,8 @@ For EACH selected sentence, provide a structured object with:
             logger.warning("输入文本为空，返回空结果")
             return ExtractedContent()
 
+        if self.client is None:
+            raise KnowledgeError("未配置 AI_API_KEY，无法整理内容", 503)
         prompt = self._build_prompt(text)
 
         try:
@@ -253,9 +256,23 @@ For EACH selected sentence, provide a structured object with:
             ])
 
             data = json.loads(raw)
+            if not isinstance(data, dict) or not isinstance(data.get("summary"), str) or not data["summary"].strip():
+                raise ValueError("模型未返回有效摘要")
 
             # 解析模块化知识卡片 (v4.0)
             modules = data.get("modules", [])
+            if not isinstance(modules, list) or any(
+                not isinstance(module, dict)
+                or not isinstance(module.get("title"), str)
+                or not isinstance(module.get("items"), list)
+                or any(not isinstance(item, str) for item in module["items"])
+                for module in modules
+            ):
+                raise ValueError("模型知识模块格式无效")
+            for field_name in ("key_points", "tags"):
+                values = data.get(field_name, [])
+                if not isinstance(values, list) or any(not isinstance(value, str) for value in values):
+                    raise ValueError("模型要点或标签格式无效")
             # 向后兼容：如果 LLM 没返回 modules 但有 key_points，自动包装
             if not modules and data.get("key_points"):
                 modules = [{"title": "核心观点", "items": data["key_points"]}]
@@ -276,20 +293,12 @@ For EACH selected sentence, provide a structured object with:
                 full_text=text,
                 close_reading=data.get("close_reading", []),
             )
-            logger.info(
-                f"AI 提取成功 — summary={result.summary[:40]}..., "
-                f"modules={len(result.modules)}个模块, "
-                f"tags={result.tags}, "
-                f"close_reading={len(result.close_reading)}条"
-            )
+            logger.info("AI 提取成功，模块数=%s", len(result.modules))
             return result
 
         except Exception as e:
-            logger.error(f"AI 提取失败: {e}")
-            return ExtractedContent(
-                summary=f"[提取失败] {e}",
-                source_url=source_url,
-            )
+            logger.error("AI 提取失败，错误类型=%s", type(e).__name__)
+            raise KnowledgeError("模型调用失败或内容格式无效，未保存知识卡片") from e
 
     # ------------------------------------------------------------------
     #  同步包装器（向后兼容）

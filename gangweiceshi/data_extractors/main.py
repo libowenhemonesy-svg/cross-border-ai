@@ -11,6 +11,7 @@ from dataclasses import asdict
 from datetime import datetime, timezone, timedelta
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from ai_processor import AIProcessor
@@ -31,6 +32,8 @@ from wechat_extractor import WechatExtractor, WechatArticle
 from wechat_tracker import WechatTracker, TrackedAccount
 from obsidian_writer import write_to_vault, sanitize_filename
 from vector_indexer import VectorIndexer
+from rag_graph import KnowledgeError, build_graph
+from rag_api import create_rag_router
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -39,9 +42,9 @@ app = FastAPI(title="Content Processor", version="3.0")
 
 # ── 常量 ──
 TZ = timezone(timedelta(hours=8))
-VAULT_PATH = "/obsidian"
+VAULT_PATH = os.getenv("VAULT_PATH", "/obsidian")
 QDRANT_URL = os.getenv("QDRANT_URL", "http://vector_db:6333")
-API_KEY = os.getenv("AI_API_KEY", "your-api-key-here")
+API_KEY = os.getenv("AI_API_KEY", "").strip()
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "BAAI/bge-m3")
 
 # ASR 配置（可替换为任意 OpenAI 兼容 Whisper 端点）
@@ -60,11 +63,32 @@ wechat_extractor: WechatExtractor | None = None
 wechat_tracker: WechatTracker | None = None
 
 
+async def retrieve_for_agent(question: str) -> list[dict]:
+    if not API_KEY:
+        raise KnowledgeError("未配置 AI_API_KEY，无法查询知识库", 503)
+    if vector_indexer is None:
+        raise KnowledgeError("向量索引器未就绪，请检查 Qdrant 并建立索引", 503)
+    try:
+        return await asyncio.to_thread(vector_indexer.search_knowledge, question, limit=4)
+    except Exception as exc:
+        raise KnowledgeError("知识检索调用失败，请检查向量服务和模型配置", 503) from exc
+
+
+app.include_router(create_rag_router(build_graph(retrieve_for_agent)))
+
+
+@app.exception_handler(KnowledgeError)
+async def knowledge_error_handler(request: Request, exc: KnowledgeError):
+    return JSONResponse(status_code=exc.status_code, content={"detail": str(exc)})
+
+
 @app.on_event("startup")
 async def startup_event():
     """启动时连接 Qdrant 向量数据库 + 初始化 Scrapling"""
     global vector_indexer, bili_scraper, wechat_extractor, wechat_tracker
     try:
+        if not API_KEY:
+            raise KnowledgeError("未配置 AI_API_KEY，跳过向量索引器初始化", 503)
         vector_indexer = VectorIndexer(
             qdrant_url=QDRANT_URL,
             api_key=API_KEY,
@@ -73,7 +97,7 @@ async def startup_event():
         logger.info(f"向量索引器已连接 → {QDRANT_URL}")
     except Exception as e:
         logger.error(f"向量索引器初始化失败（Qdrant 可能未就绪）: {e}")
-        logger.error("知识检索 API 将不可用，其他功能正常")
+        logger.error("知识检索 API 不可用，请检查模型配置与 Qdrant")
 
     try:
         bili_scraper = BilibiliScraper()
@@ -102,8 +126,7 @@ async def startup_event():
 
 @app.middleware("http")
 async def log_request_body(request: Request, call_next):
-    body = await request.body()
-    logger.info(f"[{request.method} {request.url.path}] body={body.decode()[:500]}")
+    logger.info("[%s %s]", request.method, request.url.path)
     return await call_next(request)
 
 
@@ -1584,6 +1607,7 @@ async def search_knowledge(req: SearchRequest):
 @app.get("/health")
 async def health():
     return {
-        "status": "healthy",
+        "status": "healthy" if vector_indexer is not None and API_KEY else "degraded",
+        "model_configured": bool(API_KEY),
         "vector_db": "connected" if vector_indexer is not None else "disconnected",
     }

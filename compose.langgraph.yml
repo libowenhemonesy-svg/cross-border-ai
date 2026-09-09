@@ -1,0 +1,31 @@
+# 独立知识问答部署；无需启动 n8n 或公网隧道。
+services:
+  vector_db:
+    image: qdrant/qdrant:latest
+    ports:
+      - "127.0.0.1:6333:6333"
+    volumes:
+      - langgraph_qdrant:/qdrant/storage
+
+  python_api:
+    build: ./gangweiceshi/data_extractors
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      AI_API_KEY: ${AI_API_KEY:?请在本地环境中配置自己的 AI_API_KEY}
+      AI_BASE_URL: ${AI_BASE_URL:-https://api.siliconflow.cn/v1}
+      AI_MODEL: ${AI_MODEL:-deepseek-ai/DeepSeek-V3}
+      QDRANT_URL: http://vector_db:6333
+      EMBEDDING_MODEL: BAAI/bge-m3
+    volumes:
+      - ./runtime/obsidian:/obsidian
+
+  frontend:
+    build: ./gangweiceshi/frontend
+    ports:
+      - "127.0.0.1:3000:80"
+    depends_on:
+      - python_api
+
+volumes:
+  langgraph_qdrant:
