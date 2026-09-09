@@ -231,14 +231,15 @@ class VectorIndexer:
 
             try:
                 vectors = self._embed(texts)
+                if len(vectors) != len(batch) or any(
+                    len(vector) != self.vector_size for vector in vectors
+                ):
+                    raise ValueError("Embedding 数量或维度与输入不匹配")
                 for point, vector in zip(batch, vectors):
                     point.vector = vector  # type: ignore[assignment]
             except Exception as e:
-                logger.error(
-                    f"Embedding 批次 [{batch_start}:{batch_start+batch_size}] 失败: {e}"
-                )
-                # 跳过当前批次，继续下一批
-                continue
+                logger.error("Embedding 批次失败，错误类型=%s", type(e).__name__)
+                raise RuntimeError("向量化失败，本次索引未写入，请检查模型配置") from e
 
         # 过滤掉向量填充失败的点
         valid_points = [p for p in all_points if p.vector]
@@ -253,8 +254,8 @@ class VectorIndexer:
             points=valid_points,
         )
 
-        logger.info(f"索引完成: {total_chunks} chunks / {len(md_files)} 文件")
-        return total_chunks
+        logger.info(f"索引完成: {len(valid_points)} chunks / {len(md_files)} 文件")
+        return len(valid_points)
 
     # ------------------------------------------------------------------
     #  知识检索

@@ -5,6 +5,7 @@ yt-dlp
 openai
 qdrant-client
 langchain-text-splitters
+langgraph>=1.0,<2
 scrapling
 browserforge
 curl_cffi

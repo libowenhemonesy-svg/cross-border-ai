@@ -15,6 +15,10 @@ import {
 import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
 import {
   BiliProcessResponse,
+  AskResponse,
+  ContentResponse,
+  processContent,
+  askKnowledge,
   HealthResponse,
   SearchResponse,
   UnifiedDailyResponse,
@@ -27,7 +31,7 @@ import {
 } from "./api";
 import "./styles.css";
 
-type View = "dashboard" | "bilibili" | "wechat" | "daily" | "search";
+type View = "dashboard" | "bilibili" | "wechat" | "daily" | "search" | "ask" | "content";
 
 type AsyncState<T> = {
   loading: boolean;
@@ -67,12 +71,14 @@ function App() {
             <Archive size={22} />
           </div>
           <div>
-            <strong>知识沉淀控制台</strong>
+            <strong>跨境电商 AI 全能助手</strong>
             <span>Bilibili / 微信 / Obsidian</span>
           </div>
         </div>
 
         <nav className="nav-list">
+          <NavButton icon={<FileText />} label="整理原文" active={view === "content"} onClick={() => setView("content")} />
+          <NavButton icon={<BookOpenText />} label="知识问答" active={view === "ask"} onClick={() => setView("ask")} />
           <NavButton icon={<Activity />} label="总览" active={view === "dashboard"} onClick={() => setView("dashboard")} />
           <NavButton icon={<Video />} label="B站处理" active={view === "bilibili"} onClick={() => setView("bilibili")} />
           <NavButton icon={<FileText />} label="微信处理" active={view === "wechat"} onClick={() => setView("wechat")} />
@@ -98,6 +104,8 @@ function App() {
         {view === "wechat" && <WechatPanel />}
         {view === "daily" && <DailyPanel />}
         {view === "search" && <SearchPanel />}
+        {view === "ask" && <AskPanel />}
+        {view === "content" && <ContentPanel />}
       </main>
     </div>
   );
@@ -105,6 +113,8 @@ function App() {
 
 function Dashboard({ health, setView }: { health: AsyncState<HealthResponse>; setView: (view: View) => void }) {
   const cards = [
+    { title: "整理原文", desc: "粘贴运营笔记，整理知识卡片并保存原文和来源。", icon: <FileText />, view: "content" as View },
+    { title: "知识问答", desc: "基于已索引笔记回答问题，查看引用原文。", icon: <BookOpenText />, view: "ask" as View },
     { title: "B站视频处理", desc: "提交视频链接，完成音频转写、AI 摘要和 Obsidian 入库。", icon: <Video />, view: "bilibili" as View },
     { title: "微信文章处理", desc: "提交公众号文章链接，抽取正文并生成结构化知识卡片。", icon: <FileText />, view: "wechat" as View },
     { title: "统一日报", desc: "触发 B站 + 微信内容聚合，生成跨平台知识日报。", icon: <Workflow />, view: "daily" as View },
@@ -312,6 +322,102 @@ function SearchPanel() {
   );
 }
 
+function ContentPanel() {
+  const [title, setTitle] = useState("");
+  const [url, setUrl] = useState("");
+  const [rawText, setRawText] = useState("");
+  const [state, setState] = useAsyncState<ContentResponse>();
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!title.trim() || !rawText.trim()) {
+      setState({ loading: false, error: "请填写笔记标题和原文。", data: null });
+      return;
+    }
+    setState({ loading: true, error: "", data: null });
+    try {
+      const data = await processContent({ title: title.trim(), url: url.trim(), raw_text: rawText });
+      setState({ loading: false, error: "", data });
+    } catch (error) {
+      setState({ loading: false, error: getErrorMessage(error), data: null });
+    }
+  };
+  return (
+    <section className="panel-layout">
+      <FormCard title="把原文整理成知识卡片" description="内容会发送到已配置的模型服务。请使用有权处理的资料，并为笔记使用唯一标题；同名文件会被覆盖。">
+        <form onSubmit={submit} className="form-stack">
+          <TextInput label="笔记标题" value={title} onChange={setTitle} placeholder="为这篇笔记取一个唯一标题" />
+          <TextInput label="来源链接（可选）" value={url} onChange={setUrl} placeholder="原文链接，没有可留空" />
+          <label className="field">
+            <span>原文</span>
+            <textarea value={rawText} onChange={(event) => setRawText(event.target.value)} rows={12} placeholder="粘贴你要整理的运营笔记或文章正文" />
+          </label>
+          <SubmitButton loading={state.loading} label="整理并保存" />
+        </form>
+      </FormCard>
+      <ResultCard state={state}>
+        {(data) => (
+          <div className="result-stack">
+            <ResultBlock title="知识卡片已保存" summary={data.summary} filepath={data.filepath} tags={data.tags} />
+            {data.modules.length > 0 ? data.modules.map((module, index) => (
+              <article key={index}>
+                <h3>{module.title}</h3>
+                <ul>{module.items.map((item, itemIndex) => <li key={itemIndex}>{item}</li>)}</ul>
+              </article>
+            )) : <ul>{data.key_points.map((item, index) => <li key={index}>{item}</li>)}</ul>}
+            <p className="muted">笔记已保存，尚未建立检索索引。请按部署说明运行索引后，再到「知识问答」提问。</p>
+          </div>
+        )}
+      </ResultCard>
+    </section>
+  );
+}
+
+function AskPanel() {
+  const [question, setQuestion] = useState("");
+  const [state, setState] = useAsyncState<AskResponse>();
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!question.trim()) {
+      setState({ loading: false, error: "请输入问题。", data: null });
+      return;
+    }
+    setState({ loading: true, error: "", data: null });
+    try {
+      setState({ loading: false, error: "", data: await askKnowledge(question.trim()) });
+    } catch (error) {
+      setState({ loading: false, error: getErrorMessage(error), data: null });
+    }
+  };
+  return (
+    <section className="panel-layout">
+      <FormCard title="向知识库提问" description="根据已索引资料回答，并展示参考原文。每次提问独立处理。">
+        <form onSubmit={submit} className="form-stack">
+          <TextInput label="问题" value={question} onChange={setQuestion} placeholder="你想从运营笔记中了解什么？" />
+          <SubmitButton loading={state.loading} label="提问" />
+        </form>
+      </FormCard>
+      <ResultCard state={state}>
+        {(data) => (
+          <div className="result-stack">
+            <h2>{data.status === "answered" ? "知识库回答" : "资料不足"}</h2>
+            <p style={{ whiteSpace: "pre-wrap" }}>{data.answer}</p>
+            <h3>检索原文</h3>
+            {data.sources.map((source) => (
+              <article className="search-result" key={source.id}>
+                <strong>[{source.id}] {source.source_file} {data.citation_ids.includes(source.id) ? "（回答引用）" : "（检索候选）"}</strong>
+                <p>{source.text}</p>
+                {/^https?:\/\//i.test(source.source_url) && (
+                  <a href={source.source_url} target="_blank" rel="noreferrer">查看来源</a>
+                )}
+              </article>
+            ))}
+          </div>
+        )}
+      </ResultCard>
+    </section>
+  );
+}
+
 function NavButton({ icon, label, active, onClick }: { icon: ReactNode; label: string; active: boolean; onClick: () => void }) {
   return (
     <button className={`nav-button ${active ? "active" : ""}`} onClick={onClick}>
@@ -322,7 +428,7 @@ function NavButton({ icon, label, active, onClick }: { icon: ReactNode; label: s
 }
 
 function StatusTile({ title, value, loading, error }: { title: string; value: string; loading: boolean; error: string }) {
-  const ok = !error && value && value !== "unknown";
+  const ok = !error && (value === "healthy" || value === "connected");
   return (
     <div className="status-tile">
       <span>{title}</span>
@@ -449,6 +555,8 @@ function getViewTitle(view: View) {
     bilibili: "B站视频处理",
     wechat: "微信公众号处理",
     daily: "统一日报",
+    ask: "知识库问答",
+    content: "整理原文",
     search: "知识库检索"
   }[view];
 }

@@ -4,6 +4,11 @@
 
 # Node modules
 node_modules/
+runtime/
+gangweiceshi/frontend/dist/
+gangweiceshi/frontend/*.tsbuildinfo
+gangweiceshi/frontend/vite.config.js
+gangweiceshi/frontend/vite.config.d.ts
 
 # Environment files
 .env
@@ -11,6 +16,8 @@ node_modules/
 .env.*.local
 
 # Python
+.venv/
+.pytest_cache/
 __pycache__/
 *.py[cod]
 *.egg-info/

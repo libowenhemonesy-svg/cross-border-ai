@@ -1,52 +1,29 @@
-"""LangGraph Agent — 在 Studio UI 中可视化编辑"""
-from typing import TypedDict, Literal, Annotated
-import operator
+"""LangGraph Studio 入口，复用后端问答图并通过 HTTP 检索已有知识库。"""
+import os
 
-from langgraph.graph import StateGraph, END
+import httpx
 
-
-class AgentState(TypedDict):
-    messages: Annotated[list, operator.add]
-    step_count: int
+from gangweiceshi.data_extractors.rag_graph import KnowledgeError, build_graph
 
 
-def llm_node(state: AgentState) -> AgentState:
-    """LLM 推理节点"""
-    last_msg = state["messages"][-1] if state["messages"] else ""
-    step = state.get("step_count", 0)
-
-    if step < 2 and ("天气" in last_msg or "搜索" in last_msg):
-        return {
-            "messages": ["[Agent] 需要调用工具查询..."],
-            "step_count": step + 1
-        }
-    return {
-        "messages": ["[Agent] 这是最终回答：已为你查到信息！"],
-        "step_count": step + 1
-    }
-
-
-def tool_node(state: AgentState) -> AgentState:
-    """工具执行节点"""
-    return {
-        "messages": ["[工具] 查询结果：北京晴 25°C"],
-        "step_count": state["step_count"]
-    }
+async def retrieve_knowledge(question: str) -> list[dict]:
+    base_url = os.getenv("KNOWLEDGE_API_URL", "http://localhost:8000").rstrip("/")
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            response = await client.post(
+                f"{base_url}/api/search_knowledge",
+                json={"query": question, "limit": 4},
+            )
+            response.raise_for_status()
+            results = response.json()["results"]
+            if not isinstance(results, list) or any(
+                not isinstance(item, dict) or not isinstance(item.get("text"), str)
+                for item in results
+            ):
+                raise ValueError("Invalid search results")
+            return results
+    except (httpx.HTTPError, ValueError, KeyError, TypeError) as exc:
+        raise KnowledgeError("知识检索调用失败，请检查后端和向量索引", 503) from exc
 
 
-def router(state: AgentState) -> Literal["tools", "__end__"]:
-    """路由：是否需要调用工具"""
-    last = state["messages"][-1] if state["messages"] else ""
-    if "需要调用工具" in last:
-        return "tools"
-    return "__end__"
-
-
-graph = StateGraph(AgentState)
-graph.add_node("llm", llm_node)
-graph.add_node("tools", tool_node)
-graph.set_entry_point("llm")
-graph.add_conditional_edges("llm", router, {"tools": "tools", "__end__": END})
-graph.add_edge("tools", "llm")
-
-app = graph.compile()
+app = build_graph(retrieve_knowledge)
