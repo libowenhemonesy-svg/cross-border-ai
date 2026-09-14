@@ -14,7 +14,9 @@ from typing import Optional
 from langchain_text_splitters import MarkdownHeaderTextSplitter
 from openai import OpenAI
 from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, PointStruct, VectorParams
+from qdrant_client.models import (
+    Distance, FieldCondition, Filter, HasIdCondition, MatchValue, PointStruct, VectorParams,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -109,6 +111,9 @@ class VectorIndexer:
                 ),
             )
         else:
+            params = self.qdrant.get_collection(self.collection_name).config.params.vectors
+            if not isinstance(params, VectorParams) or params.size != self.vector_size:
+                raise ValueError("已有知识库向量维度与配置不一致，请使用匹配的向量模型配置")
             logger.info(f"集合 '{self.collection_name}' 已存在")
 
     def reset_collection(self) -> None:
@@ -153,8 +158,7 @@ class VectorIndexer:
         """
         vault = Path(vault_path)
         if not vault.is_dir():
-            logger.error(f"Vault 目录不存在: {vault_path}")
-            return 0
+            raise ValueError("笔记目录不存在，请先保存笔记或检查挂载配置")
 
         md_files = sorted(vault.glob("*.md"))
         if not md_files:
@@ -252,7 +256,22 @@ class VectorIndexer:
         self.qdrant.upsert(
             collection_name=self.collection_name,
             points=valid_points,
+            wait=True,
         )
+
+        # 新分块确认写入后，才清理同一文档缩短后留下的旧分块。
+        file_ids: dict[str, list[str]] = {}
+        for point in valid_points:
+            file_ids.setdefault(point.payload["source_file"], []).append(str(point.id))
+        for source_file, ids in file_ids.items():
+            self.qdrant.delete(
+                collection_name=self.collection_name,
+                points_selector=Filter(
+                    must=[FieldCondition(key="source_file", match=MatchValue(value=source_file))],
+                    must_not=[HasIdCondition(has_id=ids)],
+                ),
+                wait=True,
+            )
 
         logger.info(f"索引完成: {len(valid_points)} chunks / {len(md_files)} 文件")
         return len(valid_points)
@@ -306,8 +325,10 @@ if __name__ == "__main__":
 
     indexer = VectorIndexer(
         qdrant_url=os.getenv("QDRANT_URL", "http://localhost:6333"),
-        api_key=os.getenv("AI_API_KEY", ""),
+        api_key=os.getenv("EMBEDDING_API_KEY", "").strip() or os.getenv("AI_API_KEY", ""),
+        base_url=os.getenv("EMBEDDING_BASE_URL") or "https://api.siliconflow.cn/v1",
         embedding_model=os.getenv("EMBEDDING_MODEL", "BAAI/bge-m3"),
+        vector_size=int(os.getenv("EMBEDDING_VECTOR_SIZE", "1024")),
     )
 
     vault = os.getenv("VAULT_PATH", "/obsidian")

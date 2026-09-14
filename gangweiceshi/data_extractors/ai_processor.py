@@ -139,8 +139,8 @@ For EACH selected sentence, provide a structured object with:
 
 """
 
-    def __init__(self, api_key: str, model: str = "deepseek-ai/DeepSeek-V3"):
-        self.client = AsyncOpenAI(api_key=api_key, base_url=self.BASE_URL) if api_key else None
+    def __init__(self, api_key: str, model: str = "deepseek-ai/DeepSeek-V3", base_url: str = BASE_URL):
+        self.client = AsyncOpenAI(api_key=api_key, base_url=base_url) if api_key else None
         self.model = model
 
     # ------------------------------------------------------------------

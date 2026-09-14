@@ -73,6 +73,44 @@ def test_health_not_green_without_dependencies(backend):
     }
 
 
+def test_indexer_recovers_after_initial_connection_failure(backend, monkeypatch):
+    from unittest.mock import Mock
+    monkeypatch.setenv("EMBEDDING_API_KEY", "embedding-test-only")
+    monkeypatch.setenv("EMBEDDING_BASE_URL", "https://example.com/v1")
+    monkeypatch.setenv("EMBEDDING_VECTOR_SIZE", "3")
+    instance = Mock()
+    factory = Mock(side_effect=[RuntimeError("offline"), instance])
+    monkeypatch.setattr(backend, "VectorIndexer", factory)
+
+    async def scenario():
+        with pytest.raises(KnowledgeError):
+            await backend.ensure_indexer()
+        assert await backend.ensure_indexer() is instance
+        assert await backend.ensure_indexer() is instance
+
+    asyncio.run(scenario())
+    assert factory.call_count == 2
+    assert factory.call_args.kwargs["api_key"] == "embedding-test-only"
+    assert factory.call_args.kwargs["base_url"] == "https://example.com/v1"
+    assert factory.call_args.kwargs["vector_size"] == 3
+
+
+def test_content_processor_accepts_custom_model_endpoint():
+    processor = AIProcessor("test-only", base_url="https://example.com/v1")
+    assert str(processor.client.base_url) == "https://example.com/v1/"
+
+
+def test_search_dependency_failure_is_actionable(backend, monkeypatch):
+    from unittest.mock import Mock
+    indexer = Mock()
+    indexer.search_knowledge.side_effect = RuntimeError("private-provider-detail")
+    monkeypatch.setattr(backend, "ensure_indexer", AsyncMock(return_value=indexer))
+    response = TestClient(backend.app).post("/api/search_knowledge", json={"query": "测试"})
+    assert response.status_code == 503
+    assert "重试" in response.json()["detail"]
+    assert "private-provider-detail" not in response.text
+
+
 def test_requests_do_not_log_private_body(backend, caplog):
     caplog.set_level(logging.INFO)
     TestClient(backend.app).post("/api/process_content", json={

@@ -15,7 +15,7 @@
 
 在仓库根目录执行。先复制 .env.example 为 .env，填写你自己的 AI_API_KEY。默认问答、内容整理和向量模型均使用硅基流动，需要账户有对应模型调用权限。
 
-AI_BASE_URL 目前只作用于新问答节点；原有内容整理与向量索引仍使用各自代码中的硅基流动地址。请勿直接把所有模型凭证替换成 DeepSeek Key 后期待索引正常工作。
+AI_BASE_URL 同时用于知识问答与内容整理。向量模型使用独立的 EMBEDDING_BASE_URL、EMBEDDING_MODEL 和 EMBEDDING_VECTOR_SIZE；EMBEDDING_API_KEY 留空时沿用 AI_API_KEY。默认向量服务仍为硅基流动，切换文本模型供应商时应为向量服务单独提供凭证。已有集合的维度必须与配置一致。
 
 ```powershell
 Copy-Item .env.example .env
@@ -33,7 +33,7 @@ Invoke-RestMethod http://localhost:8000/health
 
 先打开 http://localhost:3000 的「整理原文」，填写唯一标题、可选来源链接和正文，提交生成知识卡片。也可以通过 http://localhost:8000/docs 的 /api/process_content 提交，或将自己的 Markdown 放进 runtime/obsidian。模型会接收提交的内容；请只使用你有权发送给供应商的资料。请求正文不再写入中间件日志。
 
-建立索引：
+在网页上点击「建立 / 更新索引」，页面会显示运行中、成功片段数或失败提示。保存新笔记后需再次更新索引；失败可直接重试。也可以手动执行：
 
 ```powershell
 docker compose -f compose.langgraph.yml exec python_api python vector_indexer.py
@@ -48,7 +48,9 @@ $askBody = @{ question = "你的笔记里关于广告优化有哪些步骤？" }
 Invoke-RestMethod -Method Post -Uri http://localhost:8000/api/ask_knowledge -ContentType "application/json; charset=utf-8" -Body ([System.Text.Encoding]::UTF8.GetBytes($askBody))
 ```
 
-如健康检查显示 vector_db=disconnected，确认数据库可访问后重启 python_api。原有后端只在启动时初始化索引器。
+如启动时向量服务不可用，恢复服务后重新检索或建立索引，后端会再次尝试初始化，无需重启。网页索引接口为 POST /api/knowledge/index（202），状态查询为 GET /api/knowledge/index。
+
+索引任务状态保存在进程内，服务重启后回到 idle；当前独立部署使用单进程，同一进程中的重复点击不会启动第二个任务。不要同时执行网页索引与 CLI 索引，或将此任务接口部署成多 worker。文档新分块确认写入后才清理该文档的旧分块；向量化失败时保留原索引。空文档、读取失败和已删除的本地文件不会自动清除既有知识。
 
 ## CLI / Studio
 
