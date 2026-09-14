@@ -52,3 +52,41 @@ def test_provider_failure_not_reported_as_success(indexer, monkeypatch):
     with pytest.raises(RuntimeError, match="向量化失败"):
         instance.index_vault(str(vault))
     assert instance.qdrant.count(instance.collection_name).count == 0
+
+
+def test_shortened_note_removes_old_chunks(indexer, monkeypatch):
+    instance, vault = indexer
+    monkeypatch.setattr(instance, "_embed", lambda texts: [[1.0, 0.0, 0.0] for _ in texts])
+    note = vault / "note.md"
+    note.write_text("# 第一节\n" + "原始资料" * 30 + "\n# 第二节\n" + "过期内容" * 30, encoding="utf-8")
+    assert instance.index_vault(str(vault)) == 2
+    note.write_text("# 第一节\n" + "更新资料" * 30, encoding="utf-8")
+    assert instance.index_vault(str(vault)) == 1
+    results = instance.search_knowledge("资料", limit=10)
+    assert len(results) == 1
+    assert "更新资料" in results[0]["text"]
+
+
+def test_failed_reindex_preserves_existing_knowledge(indexer, monkeypatch):
+    instance, vault = indexer
+    monkeypatch.setattr(instance, "_embed", lambda texts: [[1.0, 0.0, 0.0] for _ in texts])
+    count = instance.index_vault(str(vault))
+    monkeypatch.setattr(instance, "_embed", Mock(side_effect=RuntimeError("offline")))
+    with pytest.raises(RuntimeError):
+        instance.index_vault(str(vault))
+    assert instance.qdrant.count(instance.collection_name).count == count
+
+
+def test_missing_vault_is_not_success(indexer):
+    instance, vault = indexer
+    with pytest.raises(ValueError, match="目录不存在"):
+        instance.index_vault(str(vault / "missing"))
+
+
+def test_collection_dimension_mismatch_preserves_data(indexer, monkeypatch):
+    instance, vault = indexer
+    monkeypatch.setattr(instance, "_embed", lambda texts: [[1.0, 0.0, 0.0] for _ in texts])
+    count = instance.index_vault(str(vault))
+    with pytest.raises(ValueError, match="维度"):
+        vector_indexer.VectorIndexer(api_key="test-only", vector_size=4)
+    assert instance.qdrant.count(instance.collection_name).count == count

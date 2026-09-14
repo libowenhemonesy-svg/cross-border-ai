@@ -3,6 +3,21 @@ export type HealthResponse = {
   vector_db?: string;
 };
 
+export type IndexStatus = {
+  status: "idle" | "running" | "succeeded" | "failed";
+  chunks: number | null;
+  error: string;
+  finished_at: string | null;
+};
+
+export function getIndexStatus() {
+  return request<IndexStatus>("/api/knowledge/index");
+}
+
+export function startIndex() {
+  return request<IndexStatus>("/api/knowledge/index", { method: "POST" });
+}
+
 export type AskResponse = {
   status: "answered" | "insufficient_context" | "no_data";
   answer: string;

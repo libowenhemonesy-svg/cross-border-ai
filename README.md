@@ -9,6 +9,7 @@
 [本地部署](docs/langgraph.md) · [演示步骤](docs/demo.md) · [反馈问题](https://github.com/libowenhemonesy-svg/cross-border-ai/issues)
 
 - 整理笔记：将原文提炼为摘要、要点和标签，保存为 Markdown 知识卡片。
+- 网页建库：点击「建立 / 更新索引」，查看处理状态与片段数，失败后可以重试。
 - 提问找答案：使用 LangGraph 检索已索引资料，调用模型生成回答，问答主路径无需 n8n。
 - 核对来源：查看检索原文与引用编号，回到来源核对回答依据。
 
@@ -18,7 +19,7 @@
 
 1. 提交原文：后端调用真实模型，提取摘要、模块化要点和标签。
 2. 保存笔记：生成 Obsidian 兼容 Markdown，保留输入的来源链接。
-3. 建立索引：手动运行向量索引脚本，把笔记写入 Qdrant。
+3. 建立索引：点击页面顶部「建立 / 更新索引」，把笔记写入 Qdrant；也保留命令行入口。
 4. 检索知识：输入问题，返回相关文本、来源文件、来源链接和相似度。
 
 检索接口返回原文片段；新增问答接口 /api/ask_knowledge 使用 LangGraph 调用模型回答，并返回来源。无资料或调用失败会明确告知。尚无广告效果、收益提升或回答准确率的实测承诺。
@@ -31,7 +32,7 @@
 | 内容整理 API | [main.py](gangweiceshi/data_extractors/main.py) | 文本整理、B 站/微信处理、日报、检索接口 |
 | AI 知识卡片 | [ai_processor.py](gangweiceshi/data_extractors/ai_processor.py) | 默认使用硅基流动接口；需要自己的有效模型凭证 |
 | Markdown 保存 | [obsidian_writer.py](gangweiceshi/data_extractors/obsidian_writer.py) | 保存到本地挂载目录；文本整理路径无需 Obsidian REST 插件 |
-| 向量检索 | [vector_indexer.py](gangweiceshi/data_extractors/vector_indexer.py) | BGE-M3 + Qdrant；文本整理后须另行建索引 |
+| 向量检索 | [vector_indexer.py](gangweiceshi/data_extractors/vector_indexer.py) | BGE-M3 + Qdrant；网页触发索引、状态查询、更新后清理同文档过期分块 |
 | Web 控制台 | [frontend](gangweiceshi/frontend/) | React 页面，包含内容处理、日报与搜索入口 |
 | n8n 问答实验 | [工作流](agentic-rag-workflow.json) | 独立的问答工作流；不要与 Qdrant 后端视为同一条已接通链路 |
 | Amazon 浏览器扩展 | [扩展目录](amazon-ai-product-analyzer/) | 提取商品信息，并请求本机 8010 端口的另一后端；不属于本次演示 |

@@ -18,6 +18,9 @@ import {
   AskResponse,
   ContentResponse,
   processContent,
+  IndexStatus,
+  getIndexStatus,
+  startIndex,
   askKnowledge,
   HealthResponse,
   SearchResponse,
@@ -99,6 +102,7 @@ function App() {
           </button>
         </header>
 
+        <IndexWorkflow setView={setView} />
         {view === "dashboard" && <Dashboard health={health} setView={setView} />}
         {view === "bilibili" && <BilibiliPanel />}
         {view === "wechat" && <WechatPanel />}
@@ -109,6 +113,52 @@ function App() {
       </main>
     </div>
   );
+}
+
+function IndexWorkflow({ setView }: { setView: (view: View) => void }) {
+  const [status, setStatus] = useState<IndexStatus | null>(null);
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout>;
+    const poll = async () => {
+      try {
+        const result = await getIndexStatus();
+        if (!cancelled) { setStatus(result); setError(""); }
+      } catch (err) {
+        if (!cancelled) setError(getErrorMessage(err));
+      }
+      if (!cancelled) timer = setTimeout(poll, 2000);
+    };
+    void poll();
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, []);
+
+  const start = async () => {
+    setSubmitting(true);
+    setError("");
+    try { setStatus(await startIndex()); }
+    catch (err) { setError(getErrorMessage(err)); }
+    finally { setSubmitting(false); }
+  };
+
+  return <section className="form-stack" aria-label="知识库使用流程">
+    <div className="toggle-row">
+      <button className="ghost-button" onClick={() => setView("content")}>1. 整理原文</button>
+      <button className="ghost-button" disabled={submitting || status?.status === "running"} onClick={start}>
+        {submitting || status?.status === "running" ? "正在建立索引…" : "2. 建立 / 更新索引"}
+      </button>
+      <button className="ghost-button" onClick={() => setView("ask")}>3. 知识问答</button>
+    </div>
+    <p className="muted" role="status" aria-live="polite">
+      {error || status?.error || (status?.status === "succeeded"
+        ? `上次索引完成：${status.chunks} 个片段。${status.chunks === 0 ? "请先保存包含正文的笔记。" : "可以开始提问；新保存的笔记需要再次更新索引。"}`
+        : status?.status === "running" ? "正在处理笔记，请稍候。可以切换页面查看其他内容。"
+        : "保存笔记后，点击建立索引，将内容加入可检索的知识库。")}
+    </p>
+  </section>;
 }
 
 function Dashboard({ health, setView }: { health: AsyncState<HealthResponse>; setView: (view: View) => void }) {
@@ -364,7 +414,7 @@ function ContentPanel() {
                 <ul>{module.items.map((item, itemIndex) => <li key={itemIndex}>{item}</li>)}</ul>
               </article>
             )) : <ul>{data.key_points.map((item, index) => <li key={index}>{item}</li>)}</ul>}
-            <p className="muted">笔记已保存，尚未建立检索索引。请按部署说明运行索引后，再到「知识问答」提问。</p>
+            <p className="muted">笔记已保存。点击页面上方「建立 / 更新索引」，完成后即可到「知识问答」提问。</p>
           </div>
         )}
       </ResultCard>

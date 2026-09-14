@@ -34,6 +34,7 @@ from obsidian_writer import write_to_vault, sanitize_filename
 from vector_indexer import VectorIndexer
 from rag_graph import KnowledgeError, build_graph
 from rag_api import create_rag_router
+from index_api import create_index_router
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -55,26 +56,49 @@ ASR_MODEL = os.getenv("ASR_MODEL", "TeleAI/TeleSpeechASR")
 processor = AIProcessor(
     api_key=API_KEY,
     model=os.getenv("AI_MODEL", "deepseek-ai/DeepSeek-V3"),
+    base_url=os.getenv("AI_BASE_URL", "https://api.siliconflow.cn/v1"),
 )
 
 vector_indexer: VectorIndexer | None = None
+indexer_lock = asyncio.Lock()
+
+
+async def ensure_indexer() -> VectorIndexer:
+    global vector_indexer
+    async with indexer_lock:
+        if vector_indexer is None:
+            key = os.getenv("EMBEDDING_API_KEY", "").strip() or API_KEY
+            if not key:
+                raise KnowledgeError("未配置向量模型凭证", 503)
+            try:
+                vector_indexer = await asyncio.to_thread(
+                    VectorIndexer,
+                    qdrant_url=QDRANT_URL,
+                    api_key=key,
+                    base_url=os.getenv("EMBEDDING_BASE_URL") or "https://api.siliconflow.cn/v1",
+                    embedding_model=EMBEDDING_MODEL,
+                    vector_size=int(os.getenv("EMBEDDING_VECTOR_SIZE", "1024")),
+                )
+            except Exception as exc:
+                raise KnowledgeError("向量服务未就绪，请检查配置后重试", 503) from exc
+        return vector_indexer
+
+
 bili_scraper: BilibiliScraper | None = None
 wechat_extractor: WechatExtractor | None = None
 wechat_tracker: WechatTracker | None = None
 
 
 async def retrieve_for_agent(question: str) -> list[dict]:
-    if not API_KEY:
-        raise KnowledgeError("未配置 AI_API_KEY，无法查询知识库", 503)
-    if vector_indexer is None:
-        raise KnowledgeError("向量索引器未就绪，请检查 Qdrant 并建立索引", 503)
+    indexer = await ensure_indexer()
     try:
-        return await asyncio.to_thread(vector_indexer.search_knowledge, question, limit=4)
+        return await asyncio.to_thread(indexer.search_knowledge, question, limit=4)
     except Exception as exc:
         raise KnowledgeError("知识检索调用失败，请检查向量服务和模型配置", 503) from exc
 
 
 app.include_router(create_rag_router(build_graph(retrieve_for_agent)))
+app.include_router(create_index_router(ensure_indexer, VAULT_PATH))
 
 
 @app.exception_handler(KnowledgeError)
@@ -87,13 +111,7 @@ async def startup_event():
     """启动时连接 Qdrant 向量数据库 + 初始化 Scrapling"""
     global vector_indexer, bili_scraper, wechat_extractor, wechat_tracker
     try:
-        if not API_KEY:
-            raise KnowledgeError("未配置 AI_API_KEY，跳过向量索引器初始化", 503)
-        vector_indexer = VectorIndexer(
-            qdrant_url=QDRANT_URL,
-            api_key=API_KEY,
-            embedding_model=EMBEDDING_MODEL,
-        )
+        await ensure_indexer()
         logger.info(f"向量索引器已连接 → {QDRANT_URL}")
     except Exception as e:
         logger.error(f"向量索引器初始化失败（Qdrant 可能未就绪）: {e}")
@@ -1576,21 +1594,19 @@ async def search_knowledge(req: SearchRequest):
     2. 在 Qdrant 'ecommerce_knowledge' 集合中执行 Cosine 相似度搜索
     3. 返回匹配度最高的文本块及其溯源信息
     """
-    if vector_indexer is None:
-        raise HTTPException(
-            status_code=503,
-            detail="向量索引器未就绪，请确认 Qdrant 服务已启动",
-        )
-
     if not req.query or not req.query.strip():
         raise HTTPException(status_code=400, detail="query 不能为空")
 
+    indexer = await ensure_indexer()
     # 同步 Qdrant 调用用 to_thread 包裹，避免阻塞事件循环
-    results = await asyncio.to_thread(
-        vector_indexer.search_knowledge,
-        query=req.query.strip(),
-        limit=min(req.limit, 10),
-    )
+    try:
+        results = await asyncio.to_thread(
+            indexer.search_knowledge,
+            query=req.query.strip(),
+            limit=max(1, min(req.limit, 10)),
+        )
+    except Exception as exc:
+        raise KnowledgeError("知识检索失败，请检查向量服务和模型配置后重试", 503) from exc
 
     return SearchResponse(
         query=req.query.strip(),
