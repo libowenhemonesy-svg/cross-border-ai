@@ -1,5 +1,7 @@
 # 跨境电商 AI 全能助手 · Cross-border AI
 
+[![Validation](https://github.com/libowenhemonesy-svg/cross-border-ai/actions/workflows/validation.yml/badge.svg)](https://github.com/libowenhemonesy-svg/cross-border-ai/actions/workflows/validation.yml)
+
 让运营知识随问随用，让重复工作自动完成。
 
 面向跨境运营的 AI 工作台，包含知识问答、内容整理与日报工作流。知识问答基于 LangGraph，从检索资料到生成回答，支持查看参考原文；资料不足时明确告知。
