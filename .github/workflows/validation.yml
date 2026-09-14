@@ -1,0 +1,60 @@
+name: Validation
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: pip
+          cache-dependency-path: gangweiceshi/data_extractors/requirements.txt
+      - run: python -m pip install -r gangweiceshi/data_extractors/requirements.txt pytest
+      - run: python -m pytest tests -q
+        env:
+          AI_API_KEY: ''
+          EMBEDDING_API_KEY: ''
+      - run: python -m compileall -q gangweiceshi/data_extractors my_agent
+
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: gangweiceshi/frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: gangweiceshi/frontend/package-lock.json
+      - run: npm ci
+      - run: npm run build
+
+  containers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose -f compose.langgraph.yml config --quiet
+        env:
+          AI_API_KEY: ci-build-only-not-a-real-key
+      - run: docker compose -f compose.langgraph.yml build python_api frontend
+        env:
+          AI_API_KEY: ci-build-only-not-a-real-key
