@@ -176,7 +176,9 @@ function Dashboard({ health, setView }: { health: AsyncState<HealthResponse>; se
       <div className="status-grid">
         <StatusTile title="python_api" value={health.data?.status ?? "unknown"} loading={health.loading} error={health.error} />
         <StatusTile title="Qdrant" value={health.data?.vector_db ?? "unknown"} loading={health.loading} error={health.error} />
+        <StatusTile title="文本模型配置" value={health.data ? (health.data.model_configured ? "已配置" : "未配置") : "unknown"} loading={health.loading} error={health.error} />
       </div>
+      <p className="muted">向量库状态来自实时连接检查；模型“已配置”仅表示已提供凭证，实际可用性以请求结果为准。</p>
 
       <div className="card-grid">
         {cards.map((card) => (

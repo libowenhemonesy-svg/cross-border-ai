@@ -1,6 +1,7 @@
 export type HealthResponse = {
   status: string;
   vector_db?: string;
+  model_configured?: boolean;
 };
 
 export type IndexStatus = {
