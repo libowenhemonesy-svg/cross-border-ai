@@ -111,6 +111,17 @@ def test_search_dependency_failure_is_actionable(backend, monkeypatch):
     assert "private-provider-detail" not in response.text
 
 
+def test_health_detects_disconnect_and_recovery(backend, monkeypatch):
+    from unittest.mock import Mock
+    indexer = Mock()
+    indexer.qdrant.get_collection.side_effect = [RuntimeError("offline"), Mock()]
+    monkeypatch.setattr(backend, "vector_indexer", indexer)
+    monkeypatch.setattr(backend, "API_KEY", "test-only")
+    client = TestClient(backend.app)
+    assert client.get("/health").json()["vector_db"] == "disconnected"
+    assert client.get("/health").json()["vector_db"] == "connected"
+
+
 def test_requests_do_not_log_private_body(backend, caplog):
     caplog.set_level(logging.INFO)
     TestClient(backend.app).post("/api/process_content", json={

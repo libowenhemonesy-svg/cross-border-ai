@@ -1622,8 +1622,20 @@ async def search_knowledge(req: SearchRequest):
 
 @app.get("/health")
 async def health():
+    connected = False
+    if vector_indexer is not None:
+        try:
+            await asyncio.wait_for(
+                asyncio.to_thread(
+                    vector_indexer.qdrant.get_collection, vector_indexer.collection_name,
+                ),
+                timeout=3,
+            )
+            connected = True
+        except Exception:
+            pass
     return {
-        "status": "healthy" if vector_indexer is not None and API_KEY else "degraded",
+        "status": "healthy" if connected and API_KEY else "degraded",
         "model_configured": bool(API_KEY),
-        "vector_db": "connected" if vector_indexer is not None else "disconnected",
+        "vector_db": "connected" if connected else "disconnected",
     }
