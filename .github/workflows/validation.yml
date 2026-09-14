@@ -58,3 +58,40 @@ jobs:
       - run: docker compose -f compose.langgraph.yml build python_api frontend
         env:
           AI_API_KEY: ci-build-only-not-a-real-key
+      - name: Start services and verify HTTP readiness
+        env:
+          AI_API_KEY: ci-build-only-not-a-real-key
+        run: |
+          docker compose -f compose.langgraph.yml up -d vector_db
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://localhost:6333/collections > /dev/null; then break; fi
+            sleep 2
+          done
+          curl --fail --silent http://localhost:6333/collections > /dev/null
+          docker compose -f compose.langgraph.yml up -d python_api frontend
+          python - <<'PY'
+          import json
+          import time
+          from urllib.request import urlopen
+
+          for attempt in range(30):
+              try:
+                  with urlopen("http://localhost:8000/health", timeout=3) as response:
+                      health = json.load(response)
+                  if health["vector_db"] != "connected":
+                      raise RuntimeError("Qdrant not connected yet")
+                  with urlopen("http://localhost:8000/api/knowledge/index", timeout=3) as response:
+                      assert json.load(response)["status"] == "idle"
+                  with urlopen("http://localhost:3000", timeout=3) as response:
+                      assert '<div id="root">' in response.read().decode()
+                  break
+              except Exception:
+                  if attempt == 29:
+                      raise
+                  time.sleep(2)
+          PY
+      - name: Stop test services
+        if: always()
+        env:
+          AI_API_KEY: ci-build-only-not-a-real-key
+        run: docker compose -f compose.langgraph.yml down
