@@ -6,7 +6,7 @@
 
 面向跨境运营的 AI 工作台，包含知识问答、内容整理与日报工作流。知识问答基于 LangGraph，从检索资料到生成回答，支持查看参考原文；资料不足时明确告知。
 
-当前重点：知识问答与内容整理。更多运营能力持续完善中。开发预览版，尚未完成干净环境下的端到端部署验收。
+当前重点：知识问答与内容整理。更多运营能力持续完善中。开发预览版：自动测试、前端构建、Docker 构建与服务启动检查已通过，真实模型端到端验收仍待完成。
 
 [本地部署](docs/langgraph.md) · [演示步骤](docs/demo.md) · [反馈问题](https://github.com/libowenhemonesy-svg/cross-border-ai/issues)
 
@@ -44,15 +44,15 @@
 
 先阅读 [LangGraph 启动说明](docs/langgraph.md)，使用根目录 compose.langgraph.yml 和自己的环境配置。基础资料整理的验收步骤见 [演示说明](docs/demo.md)。
 
-部署文件实际位于 [gangweiceshi/docker-compose.yml](gangweiceshi/docker-compose.yml)，Python 依赖位于 [gangweiceshi/data_extractors/requirements.txt](gangweiceshi/data_extractors/requirements.txt)，都不在仓库根目录。
+推荐部署入口是根目录的 [compose.langgraph.yml](compose.langgraph.yml)。[gangweiceshi/docker-compose.yml](gangweiceshi/docker-compose.yml) 是包含历史集成的另一套配置，不是本次快速启动入口。完整后端依赖位于 [gangweiceshi/data_extractors/requirements.txt](gangweiceshi/data_extractors/requirements.txt)。
 
-现有部署配置和历史工作流需要先清理凭证配置，并使用你自己的凭证。请勿直接使用仓库内的配置值。首次部署须核对服务配置、模型权限及存储挂载；当前不提供“一键部署已验证”的保证。
+复制根目录 `.env.example` 为本地 `.env`，填写自己的模型凭证，已有 `.env` 时保留并编辑。独立部署不需要历史工作流中的凭证。首次部署须核对模型权限和存储挂载，服务启动成功不代表真实模型已可用。
 
 默认代码中，文本模型与向量模型使用硅基流动接口。兼容 OpenAI 协议不代表只更换 Key 就能切换任意供应商。
 
 ## 已知限制
 
-- LangGraph 问答已覆盖离线图执行及 API 测试；尚未验证真实模型请求、容器构建或完整演示。
+- LangGraph 问答已覆盖离线图执行及 API 测试；[CI 已验证镜像构建及服务启动](https://github.com/libowenhemonesy-svg/cross-border-ai/actions/runs/34855853153)，尚未验证真实模型请求或完整演示。
 - 健康检查不能证明模型可用或知识库已经建立；需要分别验收。
 - 抓取能力受页面变化、登录状态及外部服务可用性影响。
 - 根目录仍保留历史工作流与维护脚本，不是推荐部署步骤。
@@ -61,7 +61,9 @@
 
 ## 下一次更新
 
-- [ ] 清理凭证配置，补充无真实密钥的配置样例。
+- [x] 提供独立部署配置与无真实密钥的环境样例。
+- [x] 网页触发索引、失败重试与模型独立配置。
+- [x] PR 自动测试、前端构建与 Docker 启动检查。
 - [ ] 在干净环境跑通文本整理、保存、索引和检索。
 - [ ] 发布一段真实录屏及可核对的输入、输出、耗时。
 - [ ] 增加来源匹配、无依据问题和模型失败的评测记录。
