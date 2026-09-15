@@ -177,8 +177,8 @@ class VectorIndexer:
             try:
                 content = md_file.read_text(encoding="utf-8")
             except Exception as e:
-                logger.warning(f"读取失败 {md_file.name}: {e}")
-                continue
+                logger.warning("笔记读取失败，错误类型=%s", type(e).__name__)
+                raise RuntimeError("笔记读取失败，本次索引未写入，请检查文件权限和 UTF-8 编码") from e
 
             if not content.strip():
                 continue
@@ -191,8 +191,8 @@ class VectorIndexer:
             try:
                 docs = self.splitter.split_text(body)
             except Exception as e:
-                logger.warning(f"分块失败 {md_file.name}: {e}")
-                continue
+                logger.warning("笔记分块失败，错误类型=%s", type(e).__name__)
+                raise RuntimeError("笔记分块失败，本次索引未写入，请检查 Markdown 内容") from e
 
             file_chunks = 0
             for i, doc in enumerate(docs):

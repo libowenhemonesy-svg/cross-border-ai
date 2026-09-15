@@ -17,7 +17,7 @@ def create_index_router(get_indexer, vault_path):
             state.update(status="succeeded", chunks=count)
         except Exception as exc:
             logging.getLogger(__name__).warning("索引失败，错误类型=%s", type(exc).__name__)
-            state.update(status="failed", error="建立索引失败，请检查向量服务、模型配置及笔记目录后重试。")
+            state.update(status="failed", error="建立索引失败，请检查向量服务、模型配置、笔记目录权限及 UTF-8/Markdown 格式后重试。")
         finally:
             state["finished_at"] = datetime.now(timezone.utc).isoformat()
 
