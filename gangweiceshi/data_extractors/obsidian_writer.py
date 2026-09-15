@@ -15,8 +15,11 @@ TZ = timezone(timedelta(hours=8))
 
 def sanitize_filename(title: str) -> str:
     """将标题转为安全的文件名（替换 Windows/macOS 非法字符）"""
-    safe = re.sub(r'[\\/:*?"<>|]', "-", title)
-    return safe.strip()[:120]
+    safe = re.sub(r'[\\/:*?"<>|\x00-\x1f]', "-", title.strip())
+    safe = safe.strip(" .")[:120].rstrip(" .") or "未命名笔记"
+    if re.fullmatch(r"CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9]", safe.split(".")[0], re.IGNORECASE):
+        safe = "_" + safe
+    return safe[:120]
 
 
 def format_frontmatter(data: dict) -> str:
