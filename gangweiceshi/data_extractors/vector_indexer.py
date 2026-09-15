@@ -8,6 +8,7 @@ import logging
 import os
 import re
 import uuid
+import yaml
 from pathlib import Path
 from typing import Optional
 
@@ -37,24 +38,18 @@ def _parse_frontmatter(text: str) -> tuple[dict, str]:
     Returns:
         (metadata_dict, body_text) — metadata 包含 source/date/tags 等字段
     """
-    if not text.startswith("---"):
+    match = re.match(r"\A---[ \t]*\r?\n(.*?)\r?\n---[ \t]*(?:\r?\n|$)", text, re.DOTALL)
+    if match is None:
         return {}, text
-
-    parts = text.split("---", 2)
-    if len(parts) < 3:
-        return {}, text
-
-    frontmatter = parts[1]
-    body = parts[2]
-
-    metadata: dict = {}
-    for line in frontmatter.strip().split("\n"):
-        line = line.strip()
-        if ":" in line:
-            key, _, value = line.partition(":")
-            metadata[key.strip()] = value.strip()
-
-    return metadata, body
+    try:
+        metadata = yaml.safe_load(match.group(1))
+    except yaml.YAMLError as exc:
+        raise ValueError("笔记 YAML 元数据格式无效") from exc
+    if metadata is None:
+        metadata = {}
+    if not isinstance(metadata, dict) or not isinstance(metadata.get("source", ""), str):
+        raise ValueError("笔记元数据必须为映射，source 必须为文本")
+    return metadata, text[match.end():]
 
 
 class VectorIndexer:
