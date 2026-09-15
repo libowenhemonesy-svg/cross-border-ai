@@ -113,3 +113,25 @@ def test_hidden_folders_are_not_indexed(indexer, monkeypatch):
     hidden.mkdir()
     (hidden / "old.md").write_text("已丢弃的内容" * 40, encoding="utf-8")
     assert instance.index_vault(str(vault)) == 1
+
+
+def test_unreadable_note_fails_before_embedding_or_writing(indexer, monkeypatch):
+    instance, vault = indexer
+    embed = Mock(return_value=[[1.0, 0.0, 0.0]])
+    monkeypatch.setattr(instance, "_embed", embed)
+    count = instance.index_vault(str(vault))
+    embed.reset_mock()
+    (vault / "broken.md").write_bytes(b"\xff\xfeinvalid utf8")
+    with pytest.raises(RuntimeError, match="读取"):
+        instance.index_vault(str(vault))
+    embed.assert_not_called()
+    assert instance.qdrant.count(instance.collection_name).count == count
+
+
+def test_split_failure_is_not_reported_as_success(indexer, monkeypatch):
+    instance, vault = indexer
+    monkeypatch.setattr(instance.splitter, "split_text", Mock(side_effect=RuntimeError("private-detail")))
+    with pytest.raises(RuntimeError, match="分块") as error:
+        instance.index_vault(str(vault))
+    assert "private-detail" not in str(error.value)
+    assert instance.qdrant.count(instance.collection_name).count == 0
