@@ -5,6 +5,7 @@ Obsidian 写入器 — 生成带 YAML Frontmatter 的 Markdown 并保存到本�
 
 import os
 import re
+import yaml
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
@@ -30,20 +31,11 @@ def format_frontmatter(data: dict) -> str:
     """
     now = datetime.now(TZ).strftime("%Y-%m-%d")
 
-    tags = data.get("tags", [])
-    tags_yaml = "\n  - ".join(tags)
-    if tags_yaml:
-        tags_yaml = "\n  - " + tags_yaml
-
+    metadata = {"date": now, "tags": data.get("tags", [])}
     source = data.get("source_url", "")
-    source_line = f"\nsource: {source}" if source else ""
-
-    return f"""---
-date: {now}
-tags:{tags_yaml}{source_line}
----
-
-"""
+    if source:
+        metadata["source"] = source
+    return "---\n" + yaml.safe_dump(metadata, allow_unicode=True, sort_keys=False) + "---\n\n"
 
 
 def _format_vocabulary(vocab_list: list[dict]) -> str:

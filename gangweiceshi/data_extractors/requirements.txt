@@ -4,6 +4,7 @@ httpx
 yt-dlp
 openai
 qdrant-client
+PyYAML>=6,<7
 langchain-text-splitters
 langgraph>=1.0,<2
 scrapling
