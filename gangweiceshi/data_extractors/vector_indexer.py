@@ -155,7 +155,14 @@ class VectorIndexer:
         if not vault.is_dir():
             raise ValueError("笔记目录不存在，请先保存笔记或检查挂载配置")
 
-        md_files = sorted(vault.glob("*.md"))
+        root = vault.resolve()
+        md_files = sorted(
+            path for path in vault.rglob("*.md")
+            if path.is_file()
+            and not path.is_symlink()
+            and not any(part.startswith(".") for part in path.relative_to(vault).parts)
+            and path.resolve().is_relative_to(root)
+        )
         if not md_files:
             logger.warning(f"Vault 中没有 .md 文件: {vault_path}")
             return 0
@@ -166,6 +173,7 @@ class VectorIndexer:
         all_points: list[PointStruct] = []
 
         for md_file in md_files:
+            source_file = md_file.relative_to(vault).as_posix()
             try:
                 content = md_file.read_text(encoding="utf-8")
             except Exception as e:
@@ -192,15 +200,15 @@ class VectorIndexer:
                 if len(chunk_text) < MIN_CHUNK_LENGTH:
                     continue
 
-                # 生成确定性 UUID（文件名 + chunk 序号 → 幂等覆盖）
+                # 根目录文件保留旧 ID；子目录使用相对路径避免同名冲突。
                 point_id = str(uuid.uuid5(
                     uuid.NAMESPACE_DNS,
-                    f"{md_file.name}:{i}",
+                    f"{source_file}:{i}",
                 ))
 
                 # 构建 payload（承载原文 + 溯源信息）
                 payload = {
-                    "source_file": md_file.name,
+                    "source_file": source_file,
                     "source_url": source_url,
                     "chunk_index": i,
                     "text": chunk_text,
