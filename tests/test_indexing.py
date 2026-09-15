@@ -90,3 +90,26 @@ def test_collection_dimension_mismatch_preserves_data(indexer, monkeypatch):
     with pytest.raises(ValueError, match="维度"):
         vector_indexer.VectorIndexer(api_key="test-only", vector_size=4)
     assert instance.qdrant.count(instance.collection_name).count == count
+
+
+def test_nested_notes_with_same_name_have_distinct_sources(indexer, monkeypatch):
+    instance, vault = indexer
+    monkeypatch.setattr(instance, "_embed", lambda texts: [[1.0, 0.0, 0.0] for _ in texts])
+    for folder in ("广告", "选品"):
+        directory = vault / folder
+        directory.mkdir()
+        (directory / "note.md").write_text("# 笔记\n" + folder * 60, encoding="utf-8")
+    assert instance.index_vault(str(vault)) == 3
+    sources = {item["source_file"] for item in instance.search_knowledge("笔记", limit=10)}
+    assert sources == {"note.md", "广告/note.md", "选品/note.md"}
+    assert instance.index_vault(str(vault)) == 3
+    assert instance.qdrant.count(instance.collection_name).count == 3
+
+
+def test_hidden_folders_are_not_indexed(indexer, monkeypatch):
+    instance, vault = indexer
+    monkeypatch.setattr(instance, "_embed", lambda texts: [[1.0, 0.0, 0.0] for _ in texts])
+    hidden = vault / ".trash"
+    hidden.mkdir()
+    (hidden / "old.md").write_text("已丢弃的内容" * 40, encoding="utf-8")
+    assert instance.index_vault(str(vault)) == 1
