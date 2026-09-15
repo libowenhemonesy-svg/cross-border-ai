@@ -5,6 +5,7 @@ Obsidian 写入器 — 生成带 YAML Frontmatter 的 Markdown 并保存到本�
 
 import os
 import re
+import tempfile
 import yaml
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
@@ -216,7 +217,19 @@ def write_to_vault(data: dict, vault_path: str = None, filename: str = None) -> 
 
     content = format_frontmatter(data) + format_body(data)
 
-    with open(filepath, "w", encoding="utf-8") as f:
-        f.write(content)
+    temp_path = None
+    try:
+        # 与目标位于同一目录，完整写入并关闭后再替换，索引不会读到半成品。
+        with tempfile.NamedTemporaryFile(
+            mode="w", encoding="utf-8", dir=vault_path, suffix=".tmp", delete=False,
+        ) as f:
+            temp_path = f.name
+            f.write(content)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(temp_path, filepath)
+    finally:
+        if temp_path is not None and os.path.exists(temp_path):
+            os.unlink(temp_path)
 
     return os.path.abspath(filepath)
