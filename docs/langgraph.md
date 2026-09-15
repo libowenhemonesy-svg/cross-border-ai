@@ -76,7 +76,7 @@ python -m pip install pytest fastapi httpx
 python -m pytest tests/test_rag.py -q
 ```
 
-完整后端回归需安装 gangweiceshi/data_extractors/requirements.txt，然后运行 python -m pytest tests -q。独立环境、浏览器和 34 项测试的记录见 [验收记录](validation.md)。
+完整后端回归需安装 gangweiceshi/data_extractors/requirements.txt，然后运行 python -m pytest tests -q。独立环境、浏览器、44 项测试及 Docker 启动检查的记录见 [验收记录](validation.md)。
 
 未配置真实密钥、未在 Docker 环境执行时，不能将这些离线测试描述为完整功能验收。端到端需验证：导入 → 索引 → 提问 → 原文核对；并测试无资料、无关资料与错误凭证。
 
