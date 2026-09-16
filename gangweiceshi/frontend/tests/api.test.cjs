@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
-const { getHealth } = require('../../../runtime/frontend-api-tests/api.js');
+const { getHealth, runUnifiedDaily } = require('../../../runtime/frontend-api-tests/api.js');
 
 async function withResponse(response, check) {
   const original = global.fetch;
@@ -32,3 +32,12 @@ test('malformed successful responses are explicit errors', async () => {
     await assert.rejects(getHealth(), /无效数据/);
   });
 });
+
+for (const status of ['ok', 'partial', 'failed', 'unknown']) {
+  test(`daily report preserves ${status} status and report body`, async () => {
+    const payload = { status, report_title: '测试日报', report_text: '测试报告原文' };
+    await withResponse(new Response(JSON.stringify(payload)), async () => {
+      assert.deepEqual(await runUnifiedDaily(10, 10), payload);
+    });
+  });
+}

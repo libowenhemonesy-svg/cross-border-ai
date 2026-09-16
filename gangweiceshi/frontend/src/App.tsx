@@ -340,6 +340,16 @@ function DailyPanel() {
         {(data) => (
           <div className="result-stack">
             <h2>{data.report_title}</h2>
+            <div role={data.status === "ok" ? "status" : "alert"}
+              className={data.status === "ok" ? undefined : "error-box"}>
+              {data.status === "ok"
+                ? "本次日报任务已完成，请核对下方内容与来源。"
+                : data.status === "partial"
+                  ? "日报仅部分完成：存在处理失败或平台未就绪，请查看正文提示后重试。"
+                  : data.status === "failed"
+                    ? "日报生成失败：没有平台完整完成本次任务，请检查配置及正文中的错误提示。"
+                    : "日报状态未知，尚不能确认任务成功，请核对服务版本与报告内容。"}
+            </div>
             <div className="metrics">
               <Metric label="B站" value={data.bili_processed ?? "-"} />
               <Metric label="微信" value={data.wechat_processed ?? "-"} />
