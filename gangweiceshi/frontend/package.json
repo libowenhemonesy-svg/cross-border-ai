@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "test": "tsc src/api.ts --outDir ../../runtime/frontend-api-tests --module commonjs --target ES2020 --skipLibCheck && node --test tests/api.test.cjs",
     "dev": "vite --host 0.0.0.0",
     "build": "tsc -b && vite build",
     "preview": "vite preview --host 0.0.0.0"

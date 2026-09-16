@@ -116,11 +116,27 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   });
 
   const text = await response.text();
-  const data = text ? JSON.parse(text) : null;
+  let data;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    throw new Error(response.ok
+      ? "服务返回了无效数据，请稍后重试。"
+      : `服务返回错误（HTTP ${response.status}），请检查后端服务后重试。`);
+  }
 
   if (!response.ok) {
-    const message = data?.detail || data?.message || response.statusText;
-    throw new Error(typeof message === "string" ? message : JSON.stringify(message));
+    const message = data?.detail || data?.message;
+    if (typeof message === "string" && message) throw new Error(message);
+    if (Array.isArray(message)) {
+      const details = message.map((item) => {
+        if (!item || typeof item.msg !== "string") return "";
+        const field = Array.isArray(item.loc) ? item.loc.filter((part: unknown) => part !== "body").join(".") : "";
+        return field ? `${field}: ${item.msg}` : item.msg;
+      }).filter(Boolean).join("；");
+      if (details) throw new Error(details);
+    }
+    throw new Error(`服务返回错误（HTTP ${response.status}），请稍后重试。`);
   }
 
   return data as T;
