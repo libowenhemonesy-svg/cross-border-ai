@@ -155,6 +155,7 @@ def test_daily_skips_unavailable_wechat(backend, monkeypatch, tracker_ready, ext
     response = TestClient(backend.app).post("/api/unified_daily")
     assert response.status_code == 200
     assert "微信服务未就绪，已跳过" in response.json()["report_text"]
+    assert response.json()["status"] == "partial"
     assert "测试正文" in response.json()["report_text"]
     bili.assert_awaited_once()
     wechat.assert_not_awaited()
@@ -171,5 +172,43 @@ def test_daily_runs_both_available_sources(backend, monkeypatch):
     assert response.status_code == 200
     assert "B站正文" in response.json()["report_text"]
     assert "微信正文" in response.json()["report_text"]
+    assert response.json()["status"] == "ok"
     bili.assert_awaited_once()
     wechat.assert_awaited_once()
+
+
+@pytest.mark.parametrize("bili_failed,wechat_failed,expected", [
+    (True, False, "partial"), (False, True, "partial"), (True, True, "failed"),
+])
+def test_daily_reports_platform_failure(backend, monkeypatch, caplog,
+                                       bili_failed, wechat_failed, expected):
+    monkeypatch.setattr(backend, "wechat_tracker", object())
+    monkeypatch.setattr(backend, "wechat_extractor", object())
+    monkeypatch.setattr(backend, "_run_bilibili_daily", AsyncMock(
+        side_effect=RuntimeError("PRIVATE_PROVIDER_ERROR") if bili_failed else None,
+        return_value=("B站", "B站成功内容", 1, []),
+    ))
+    monkeypatch.setattr(backend, "_run_wechat_daily", AsyncMock(
+        side_effect=RuntimeError("PRIVATE_PROVIDER_ERROR") if wechat_failed else None,
+        return_value=("微信", "微信成功内容", 1, 1, []),
+    ))
+    response = TestClient(backend.app).post("/api/unified_daily")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == expected
+    assert "日报生成失败" in data["report_text"]
+    assert "暂无可处理内容" not in data["report_text"]
+    assert "PRIVATE_PROVIDER_ERROR" not in response.text + caplog.text
+    if not bili_failed:
+        assert "B站成功内容" in data["report_text"]
+    if not wechat_failed:
+        assert "微信成功内容" in data["report_text"]
+
+
+def test_daily_failed_when_only_available_platform_fails(backend, monkeypatch):
+    monkeypatch.setattr(backend, "wechat_tracker", None)
+    monkeypatch.setattr(backend, "wechat_extractor", None)
+    monkeypatch.setattr(backend, "_run_bilibili_daily", AsyncMock(side_effect=RuntimeError("offline")))
+    response = TestClient(backend.app).post("/api/unified_daily")
+    assert response.json()["status"] == "failed"
+    assert "微信服务未就绪，已跳过" in response.json()["report_text"]
