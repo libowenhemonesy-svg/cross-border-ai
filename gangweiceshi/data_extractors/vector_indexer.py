@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Optional
 from knowledge_files import markdown_files
 
-from langchain_text_splitters import MarkdownHeaderTextSplitter
+from langchain_text_splitters import MarkdownHeaderTextSplitter, RecursiveCharacterTextSplitter
 from openai import OpenAI
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
@@ -81,6 +81,11 @@ class VectorIndexer:
         self.splitter = MarkdownHeaderTextSplitter(
             headers_to_split_on=HEADERS_TO_SPLIT,
             strip_headers=False,
+        )
+        self.length_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=1500,
+            chunk_overlap=150,
+            separators=["\n\n", "\n", "。", "！", "？", "；", " ", ""],
         )
 
         self._ensure_collection()
@@ -184,6 +189,7 @@ class VectorIndexer:
             # Markdown 结构感知分块
             try:
                 docs = self.splitter.split_text(body)
+                docs = self.length_splitter.split_documents(docs)
             except Exception as e:
                 logger.warning("笔记分块失败，错误类型=%s", type(e).__name__)
                 raise RuntimeError("笔记分块失败，本次索引未写入，请检查 Markdown 内容") from e
