@@ -356,6 +356,7 @@ class WechatDailyResponse(BaseModel):
     report_text: str = ""
     processed: int = 0
     discovered: int = 0
+    failed: int = 0
     details: list[dict] = []
 
 
@@ -799,20 +800,13 @@ async def wechat_accounts():
 async def wechat_daily(max_articles: int = 10):
     """一键日报端点：发现追踪账号的新文章 → AI 提炼 → 生成 Markdown 报告"""
     try:
-        report_title, report_text, processed, discovered, _ = await _run_wechat_daily(max_articles)
-        return WechatDailyResponse(
-            status="ok",
-            report_title=report_title,
-            report_text=report_text,
-            processed=processed,
-            discovered=discovered,
-            details=[],
-        )
+        report, _ = await _run_wechat_daily(max_articles)
+        return report
     except RuntimeError as e:
-        raise HTTPException(status_code=503, detail=str(e))
+        raise HTTPException(status_code=503, detail="微信日报生成失败，请检查服务、登录及网络配置") from e
     except Exception as e:
-        logger.error(f"[WechatDaily] 失败: {e}")
-        raise HTTPException(status_code=500, detail=f"日报生成失败: {e}")
+        logger.error("[WechatDaily] 失败，错误类型=%s", type(e).__name__)
+        raise HTTPException(status_code=500, detail="微信日报生成失败，请检查配置后重试") from e
 
 
 # ── 内部辅助：单视频全链路处理（供 /api/bilibili/batch 复用）──
@@ -1278,8 +1272,8 @@ async def _run_bilibili_daily(
 
 async def _run_wechat_daily(
     max_articles: int = 10,
-) -> tuple[str, str, int, int, list[dict]]:  # (title, text, processed, discovered, [{title,summary,link,tags}])
-    """微信日报核心逻辑，返回报告标题、正文、处理数、发现数、新增条目列表"""
+) -> tuple[WechatDailyResponse, list[dict]]:
+    """微信日报核心逻辑，返回真实处理统计及新增条目列表。"""
     if wechat_tracker is None or wechat_extractor is None:
         raise RuntimeError("微信服务未就绪")
 
@@ -1315,12 +1309,13 @@ async def _run_wechat_daily(
             result["summary"] = extracted.summary
             result["modules"] = extracted.modules
         except Exception as e:
-            logger.warning(f"[WechatDaily] 处理失败 {art.url[:60]}: {e}")
-            result["error"] = str(e)[:200]
+            logger.warning("[WechatDaily] 处理失败，错误类型=%s", type(e).__name__)
+            result["error"] = "文章处理失败，请检查采集及模型配置后重试。"
         details.append(result)
 
     today = datetime.now(TZ).strftime("%Y-%m-%d")
     ok_items = [d for d in details if d["status"] == "ok"]
+    failed = len(details) - processed
     lines = [
         f"## 📱 微信公众号",
         f"> {today}",
@@ -1328,6 +1323,7 @@ async def _run_wechat_daily(
         f"- 追踪账号: {len(wechat_tracker.get_accounts())} 个",
         f"- 发现新文章: {len(discovered)} 篇",
         f"- 处理成功: {processed} 篇",
+        f"- 处理失败: {failed} 篇",
         "",
     ]
 
@@ -1368,7 +1364,11 @@ async def _run_wechat_daily(
     report_title = f"每日微信公众号知识沉淀日报_{today}"
 
     logger.info(f"[WechatDaily] 完成: processed={processed}")
-    return report_title, report_text, processed, len(discovered), ok_items_data
+    status = "partial" if failed and processed else "failed" if failed else "ok"
+    return WechatDailyResponse(
+        status=status, report_title=report_title, report_text=report_text,
+        processed=processed, discovered=len(discovered), failed=failed, details=details,
+    ), ok_items_data
 
 
 @app.post("/api/bilibili/daily", response_model=BiliDailyResponse)
@@ -1418,8 +1418,14 @@ async def unified_daily(
     if wechat_task is None:
         results.append(None)
 
-    succeeded = sum(result is not None and not isinstance(result, Exception) for result in results)
-    report_status = "ok" if succeeded == 2 else "partial" if succeeded else "failed"
+    statuses = [
+        result[0].status if result is not None and not isinstance(result, Exception) else "failed"
+        for result in results
+    ]
+    report_status = (
+        "ok" if all(status == "ok" for status in statuses)
+        else "failed" if all(status == "failed" for status in statuses) else "partial"
+    )
 
     # 解析 B站结果
     if isinstance(results[0], Exception):
@@ -1430,8 +1436,6 @@ async def unified_daily(
         bili_title, bili_text, bili_count = (
             bili_report.report_title, bili_report.report_text, bili_report.processed,
         )
-        if bili_report.status != "ok":
-            report_status = "partial" if succeeded == 2 or bili_report.status == "partial" else "failed"
         for item in bili_items:
             item["source"] = "B站"
             all_new_items.append(item)
@@ -1443,7 +1447,11 @@ async def unified_daily(
         logger.warning("[UnifiedDaily] 微信日报失败，错误类型=%s", type(results[1]).__name__)
         wechat_text = "## 📱 微信公众号\n> 日报生成失败，请检查平台登录、网络及模型配置后重试。\n"
     else:
-        wechat_title, wechat_text, wechat_count, wechat_found, wechat_items = results[1]
+        wechat_report, wechat_items = results[1]
+        wechat_title, wechat_text, wechat_count, wechat_found = (
+            wechat_report.report_title, wechat_report.report_text,
+            wechat_report.processed, wechat_report.discovered,
+        )
         for item in wechat_items:
             item["source"] = "微信"
             all_new_items.append(item)
