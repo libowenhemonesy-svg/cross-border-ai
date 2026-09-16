@@ -1112,8 +1112,8 @@ def _matches_keywords(title: str, keywords: str) -> bool:
 async def _run_bilibili_daily(
     max_videos: int = 10,
     filter_keywords: str = "",
-) -> tuple[str, str, int, list[dict]]:  # (title, text, processed, [{title,summary,link,tags}])
-    """B站日报核心逻辑，返回报告标题、正文、处理数、新增条目列表"""
+) -> tuple[BiliDailyResponse, list[dict]]:
+    """B站日报核心逻辑，返回真实处理统计及新增条目列表。"""
     from bili_extractor import extract_bv_id
 
     has_filter = bool(filter_keywords and filter_keywords.strip())
@@ -1200,6 +1200,8 @@ async def _run_bilibili_daily(
             modules=r.get("modules", []),
         ))
 
+    failed = sum(d.status == "failed" for d in details)
+    skipped = sum(d.status == "skipped" for d in details)
     today = datetime.now(TZ).strftime("%Y-%m-%d")
     filter_info = f"\n- 关键词过滤: \"{filter_keywords}\" 过滤掉 {filtered_count} 条" if has_filter else ""
     lines = [
@@ -1208,6 +1210,8 @@ async def _run_bilibili_daily(
         "",
         f"- 新发现视频: {len(all_bvs)} 个{filter_info}",
         f"- 已处理: {processed} 篇",
+        f"- 处理失败: {failed} 个",
+        f"- 已跳过: {skipped} 个",
         "",
     ]
 
@@ -1260,7 +1264,16 @@ async def _run_bilibili_daily(
     report_title = f"每日B站知识沉淀日报_{today}"
 
     logger.info(f"[Daily] 完成: processed={processed}")
-    return report_title, report_text, processed, ok_items_data
+    status = "partial" if discovery_errors or failed else "ok"
+    if failed and not processed and not skipped:
+        status = "failed"
+    for detail in details:
+        if detail.error:
+            detail.error = "处理未完成，请检查采集、转录及模型配置后重试。"
+    return BiliDailyResponse(
+        status=status, report_title=report_title, report_text=report_text,
+        processed=processed, failed=failed, skipped=skipped, details=details,
+    ), ok_items_data
 
 
 async def _run_wechat_daily(
@@ -1364,16 +1377,8 @@ async def bilibili_daily(
     filter_keywords: str = "",
 ):
     """一键日报: 获取关注动态 → 去重 → 批量转录 → 生成 Markdown 报告"""
-    report_title, report_text, processed, _ = await _run_bilibili_daily(max_videos, filter_keywords)
-    return BiliDailyResponse(
-        status="ok",
-        report_title=report_title,
-        report_text=report_text,
-        processed=processed,
-        skipped=0,
-        failed=0,
-        details=[],
-    )
+    report, _ = await _run_bilibili_daily(max_videos, filter_keywords)
+    return report
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -1421,7 +1426,12 @@ async def unified_daily(
         logger.warning("[UnifiedDaily] B站日报失败，错误类型=%s", type(results[0]).__name__)
         bili_text = "## 📺 B站\n> 日报生成失败，请检查平台登录、网络及模型配置后重试。\n"
     else:
-        bili_title, bili_text, bili_count, bili_items = results[0]
+        bili_report, bili_items = results[0]
+        bili_title, bili_text, bili_count = (
+            bili_report.report_title, bili_report.report_text, bili_report.processed,
+        )
+        if bili_report.status != "ok":
+            report_status = "partial" if succeeded == 2 or bili_report.status == "partial" else "failed"
         for item in bili_items:
             item["source"] = "B站"
             all_new_items.append(item)

@@ -148,7 +148,7 @@ def test_content_success_saves_source_and_original(backend, monkeypatch, tmp_pat
 def test_daily_skips_unavailable_wechat(backend, monkeypatch, tracker_ready, extractor_ready):
     monkeypatch.setattr(backend, "wechat_tracker", object() if tracker_ready else None)
     monkeypatch.setattr(backend, "wechat_extractor", object() if extractor_ready else None)
-    bili = AsyncMock(return_value=("测试日报", "测试正文", 0, []))
+    bili = AsyncMock(return_value=(backend.BiliDailyResponse(status="ok", report_text="测试正文"), []))
     wechat = AsyncMock()
     monkeypatch.setattr(backend, "_run_bilibili_daily", bili)
     monkeypatch.setattr(backend, "_run_wechat_daily", wechat)
@@ -164,7 +164,7 @@ def test_daily_skips_unavailable_wechat(backend, monkeypatch, tracker_ready, ext
 def test_daily_runs_both_available_sources(backend, monkeypatch):
     monkeypatch.setattr(backend, "wechat_tracker", object())
     monkeypatch.setattr(backend, "wechat_extractor", object())
-    bili = AsyncMock(return_value=("测试B站日报", "B站正文", 0, []))
+    bili = AsyncMock(return_value=(backend.BiliDailyResponse(status="ok", report_text="B站正文"), []))
     wechat = AsyncMock(return_value=("测试微信日报", "微信正文", 0, 0, []))
     monkeypatch.setattr(backend, "_run_bilibili_daily", bili)
     monkeypatch.setattr(backend, "_run_wechat_daily", wechat)
@@ -186,7 +186,7 @@ def test_daily_reports_platform_failure(backend, monkeypatch, caplog,
     monkeypatch.setattr(backend, "wechat_extractor", object())
     monkeypatch.setattr(backend, "_run_bilibili_daily", AsyncMock(
         side_effect=RuntimeError("PRIVATE_PROVIDER_ERROR") if bili_failed else None,
-        return_value=("B站", "B站成功内容", 1, []),
+        return_value=(backend.BiliDailyResponse(status="ok", report_text="B站成功内容", processed=1), []),
     ))
     monkeypatch.setattr(backend, "_run_wechat_daily", AsyncMock(
         side_effect=RuntimeError("PRIVATE_PROVIDER_ERROR") if wechat_failed else None,
@@ -225,10 +225,11 @@ def test_bili_discovery_failure_is_visible(backend, monkeypatch, caplog, favorit
     monkeypatch.setattr(backend, "BiliFavoritesFetcher", lambda: favorites)
     monkeypatch.setattr(backend, "get_uid_from_cookies", lambda: 1 if favorites_available else 0)
     if favorites_available:
-        _, report, count, _ = asyncio.run(backend._run_bilibili_daily())
-        assert "关注动态读取失败" in report
-        assert "本次结果不完整" in report
-        assert count == 0
+        report, _ = asyncio.run(backend._run_bilibili_daily())
+        assert "关注动态读取失败" in report.report_text
+        assert "本次结果不完整" in report.report_text
+        assert report.processed == 0
+        assert report.status == "partial"
     else:
         with pytest.raises(KnowledgeError, match="内容发现失败"):
             asyncio.run(backend._run_bilibili_daily())
@@ -242,7 +243,54 @@ def test_bili_empty_feed_is_not_failure(backend, monkeypatch):
     following.get_following_feed = AsyncMock(return_value=SimpleNamespace(items=[]))
     monkeypatch.setattr(backend, "BiliFollowingFetcher", lambda: following)
     monkeypatch.setattr(backend, "get_uid_from_cookies", lambda: 0)
-    _, report, count, items = asyncio.run(backend._run_bilibili_daily())
-    assert "采集异常" not in report
-    assert count == 0
+    report, items = asyncio.run(backend._run_bilibili_daily())
+    assert "采集异常" not in report.report_text
+    assert report.processed == 0
     assert items == []
+
+
+@pytest.mark.parametrize("statuses,expected", [(["ok", "failed", "skipped"], "partial"), (["failed"], "failed")])
+def test_bili_daily_returns_real_counts(backend, monkeypatch, statuses, expected):
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+    following = Mock()
+    following.get_following_feed = AsyncMock(return_value=SimpleNamespace(items=[
+        SimpleNamespace(bvid=f"BV{i}", title="测试视频", author_name="测试")
+        for i in range(len(statuses))
+    ]))
+    monkeypatch.setattr(backend, "BiliFollowingFetcher", lambda: following)
+    monkeypatch.setattr(backend, "get_uid_from_cookies", lambda: 0)
+    monkeypatch.setattr(backend, "is_processed", lambda _: False)
+    mark = Mock()
+    monkeypatch.setattr(backend, "mark_processed", mark)
+    monkeypatch.setattr(backend, "_process_single_bili_video", AsyncMock(side_effect=[
+        {"status": status, "title": "测试视频", "error": "PRIVATE_ERROR" if status == "failed" else ""}
+        for status in statuses
+    ]))
+    response = TestClient(backend.app).post("/api/bilibili/daily")
+    assert response.status_code == 200
+    result = response.json()
+    assert result["status"] == expected
+    assert result["processed"] == statuses.count("ok")
+    assert result["failed"] == statuses.count("failed")
+    assert result["skipped"] == statuses.count("skipped")
+    assert [item["status"] for item in result["details"]] == statuses
+    assert mark.call_count == statuses.count("ok")
+    assert "处理失败: 1 个" in result["report_text"]
+    assert "PRIVATE_ERROR" not in response.text
+
+
+@pytest.mark.parametrize("bili_status,wechat_ready,expected", [
+    ("partial", False, "partial"), ("partial", True, "partial"),
+    ("failed", False, "failed"), ("failed", True, "partial"),
+])
+def test_unified_daily_preserves_bili_failure_status(backend, monkeypatch,
+                                                    bili_status, wechat_ready, expected):
+    monkeypatch.setattr(backend, "wechat_tracker", object() if wechat_ready else None)
+    monkeypatch.setattr(backend, "wechat_extractor", object() if wechat_ready else None)
+    monkeypatch.setattr(backend, "_run_bilibili_daily", AsyncMock(return_value=(
+        backend.BiliDailyResponse(status=bili_status, failed=1), [],
+    )))
+    monkeypatch.setattr(backend, "_run_wechat_daily", AsyncMock(return_value=("微信", "正文", 0, 0, [])))
+    response = TestClient(backend.app).post("/api/unified_daily")
+    assert response.json()["status"] == expected
