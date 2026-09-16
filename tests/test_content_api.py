@@ -142,3 +142,34 @@ def test_content_success_saves_source_and_original(backend, monkeypatch, tmp_pat
     assert "https://example.com/source" in note
     assert "测试用原始内容" in note
     assert response.json()["summary"] == "测试摘要"
+
+
+@pytest.mark.parametrize("tracker_ready, extractor_ready", [(False, False), (True, False), (False, True)])
+def test_daily_skips_unavailable_wechat(backend, monkeypatch, tracker_ready, extractor_ready):
+    monkeypatch.setattr(backend, "wechat_tracker", object() if tracker_ready else None)
+    monkeypatch.setattr(backend, "wechat_extractor", object() if extractor_ready else None)
+    bili = AsyncMock(return_value=("测试日报", "测试正文", 0, []))
+    wechat = AsyncMock()
+    monkeypatch.setattr(backend, "_run_bilibili_daily", bili)
+    monkeypatch.setattr(backend, "_run_wechat_daily", wechat)
+    response = TestClient(backend.app).post("/api/unified_daily")
+    assert response.status_code == 200
+    assert "微信服务未就绪，已跳过" in response.json()["report_text"]
+    assert "测试正文" in response.json()["report_text"]
+    bili.assert_awaited_once()
+    wechat.assert_not_awaited()
+
+
+def test_daily_runs_both_available_sources(backend, monkeypatch):
+    monkeypatch.setattr(backend, "wechat_tracker", object())
+    monkeypatch.setattr(backend, "wechat_extractor", object())
+    bili = AsyncMock(return_value=("测试B站日报", "B站正文", 0, []))
+    wechat = AsyncMock(return_value=("测试微信日报", "微信正文", 0, 0, []))
+    monkeypatch.setattr(backend, "_run_bilibili_daily", bili)
+    monkeypatch.setattr(backend, "_run_wechat_daily", wechat)
+    response = TestClient(backend.app).post("/api/unified_daily")
+    assert response.status_code == 200
+    assert "B站正文" in response.json()["report_text"]
+    assert "微信正文" in response.json()["report_text"]
+    bili.assert_awaited_once()
+    wechat.assert_awaited_once()

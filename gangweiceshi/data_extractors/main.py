@@ -1392,7 +1392,12 @@ async def unified_daily(
     bili_task = _run_bilibili_daily(max_videos, filter_keywords)
     wechat_task = _run_wechat_daily(max_articles) if (wechat_tracker and wechat_extractor) else None
 
-    results = await asyncio.gather(bili_task, wechat_task, return_exceptions=True)
+    tasks = [bili_task]
+    if wechat_task is not None:
+        tasks.append(wechat_task)
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    if wechat_task is None:
+        results.append(None)
 
     # 解析 B站结果
     if isinstance(results[0], Exception):
