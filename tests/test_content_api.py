@@ -212,3 +212,37 @@ def test_daily_failed_when_only_available_platform_fails(backend, monkeypatch):
     response = TestClient(backend.app).post("/api/unified_daily")
     assert response.json()["status"] == "failed"
     assert "微信服务未就绪，已跳过" in response.json()["report_text"]
+
+
+@pytest.mark.parametrize("favorites_available", [False, True])
+def test_bili_discovery_failure_is_visible(backend, monkeypatch, caplog, favorites_available):
+    from unittest.mock import Mock
+    following = Mock()
+    following.get_following_feed = AsyncMock(side_effect=RuntimeError("PRIVATE_DISCOVERY_ERROR"))
+    favorites = Mock()
+    favorites.list_folders = AsyncMock(return_value=[])
+    monkeypatch.setattr(backend, "BiliFollowingFetcher", lambda: following)
+    monkeypatch.setattr(backend, "BiliFavoritesFetcher", lambda: favorites)
+    monkeypatch.setattr(backend, "get_uid_from_cookies", lambda: 1 if favorites_available else 0)
+    if favorites_available:
+        _, report, count, _ = asyncio.run(backend._run_bilibili_daily())
+        assert "关注动态读取失败" in report
+        assert "本次结果不完整" in report
+        assert count == 0
+    else:
+        with pytest.raises(KnowledgeError, match="内容发现失败"):
+            asyncio.run(backend._run_bilibili_daily())
+    assert "PRIVATE_DISCOVERY_ERROR" not in caplog.text
+
+
+def test_bili_empty_feed_is_not_failure(backend, monkeypatch):
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+    following = Mock()
+    following.get_following_feed = AsyncMock(return_value=SimpleNamespace(items=[]))
+    monkeypatch.setattr(backend, "BiliFollowingFetcher", lambda: following)
+    monkeypatch.setattr(backend, "get_uid_from_cookies", lambda: 0)
+    _, report, count, items = asyncio.run(backend._run_bilibili_daily())
+    assert "采集异常" not in report
+    assert count == 0
+    assert items == []

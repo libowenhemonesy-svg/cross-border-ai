@@ -218,7 +218,10 @@ class BiliFavoritesFetcher:
             )
             url = f"https://api.bilibili.com/x/v3/fav/folder/created/list?{urllib.parse.urlencode(params)}"
             resp = await client.get(url, headers=self._headers)
+            resp.raise_for_status()
             data = resp.json()
+            if data.get("code") != 0:
+                raise RuntimeError("创建的收藏夹列表读取失败，请检查登录状态")
             if data.get("code") == 0 and data.get("data"):
                 for f in data["data"].get("list", []):
                     folders.append(BiliFavFolder(
@@ -234,7 +237,10 @@ class BiliFavoritesFetcher:
             )
             url2 = f"https://api.bilibili.com/x/v3/fav/folder/collected/list?{urllib.parse.urlencode(params2)}"
             resp2 = await client.get(url2, headers=self._headers)
+            resp2.raise_for_status()
             data2 = resp2.json()
+            if data2.get("code") != 0:
+                raise RuntimeError("收藏的收藏夹列表读取失败，请检查登录状态")
             if data2.get("code") == 0 and data2.get("data"):
                 for f in data2["data"].get("list", []):
                     folders.append(BiliFavFolder(
