@@ -1120,10 +1120,13 @@ async def _run_bilibili_daily(
     all_bvs: list[str] = []
     all_videos_info: list[dict] = []
     filtered_count = 0
+    discovery_errors: list[str] = []
+    discovery_succeeded = False
 
     try:
         following = BiliFollowingFetcher()
         following_result = await following.get_following_feed(page=1, page_size=20)
+        discovery_succeeded = True
         for v in following_result.items:
             if not v.bvid or is_processed(v.bvid):
                 continue
@@ -1134,18 +1137,22 @@ async def _run_bilibili_daily(
             all_videos_info.append({"bvid": v.bvid, "title": v.title, "author": v.author_name})
         logger.info(f"[Daily] 关注动态: {len(following_result.items)} 条, 过滤 {filtered_count} 条, 新视频 {len(all_bvs)} 条")
     except Exception as e:
-        logger.warning(f"[Daily] 获取关注动态失败 (不阻断): {e}")
+        logger.warning("[Daily] 获取关注动态失败，错误类型=%s", type(e).__name__)
+        discovery_errors.append("关注动态读取失败，请检查登录状态和网络。")
 
     try:
         uid = get_uid_from_cookies()
         if uid > 0:
             fav_fetcher = BiliFavoritesFetcher()
             folders = await fav_fetcher.list_folders(uid)
+            if not folders:
+                discovery_succeeded = True
             for folder in folders[:3]:
                 try:
                     fv_result = await fav_fetcher.get_folder_videos(
                         uid, folder.media_id, page=1, page_size=20,
                     )
+                    discovery_succeeded = True
                     for v in fv_result.items:
                         if not v.bvid or v.bvid in all_bvs or is_processed(v.bvid):
                             continue
@@ -1158,10 +1165,15 @@ async def _run_bilibili_daily(
                             "author": v.author_name, "folder": folder.title,
                         })
                 except Exception as fe:
-                    logger.warning(f"[Daily] 获取收藏夹 {folder.title} 失败: {fe}")
+                    logger.warning("[Daily] 获取收藏夹失败，错误类型=%s", type(fe).__name__)
+                    discovery_errors.append("部分收藏夹读取失败，本次结果可能不完整。")
             logger.info(f"[Daily] 收藏夹: 累计 {len(all_bvs)} 个新视频")
     except Exception as e:
-        logger.warning(f"[Daily] 收藏夹获取失败 (不阻断): {e}")
+        logger.warning("[Daily] 收藏夹获取失败，错误类型=%s", type(e).__name__)
+        discovery_errors.append("收藏夹读取失败，请检查登录状态和网络。")
+
+    if not discovery_succeeded:
+        raise KnowledgeError("B站内容发现失败，请检查登录状态和网络后重试", 503)
 
     all_bvs = list(dict.fromkeys(all_bvs))
     limit = min(max_videos, 20)
@@ -1200,6 +1212,8 @@ async def _run_bilibili_daily(
     ]
 
     ok_items_data: list[dict] = []
+    if discovery_errors:
+        lines.extend(["### 采集异常（本次结果不完整）", *dict.fromkeys(discovery_errors), ""])
     ok_items = [d for d in details if d.status == "ok"]
     if ok_items:
         lines.append("### 新增沉淀")
