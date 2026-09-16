@@ -11,6 +11,7 @@ import uuid
 import yaml
 from pathlib import Path
 from typing import Optional
+from knowledge_files import markdown_files
 
 from langchain_text_splitters import MarkdownHeaderTextSplitter
 from openai import OpenAI
@@ -155,14 +156,7 @@ class VectorIndexer:
         if not vault.is_dir():
             raise ValueError("笔记目录不存在，请先保存笔记或检查挂载配置")
 
-        root = vault.resolve()
-        md_files = sorted(
-            path for path in vault.rglob("*.md")
-            if path.is_file()
-            and not path.is_symlink()
-            and not any(part.startswith(".") for part in path.relative_to(vault).parts)
-            and path.resolve().is_relative_to(root)
-        )
+        md_files = markdown_files(vault)
         if not md_files:
             logger.warning(f"Vault 中没有 .md 文件: {vault_path}")
             return 0
