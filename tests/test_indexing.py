@@ -135,3 +135,28 @@ def test_split_failure_is_not_reported_as_success(indexer, monkeypatch):
         instance.index_vault(str(vault))
     assert "private-detail" not in str(error.value)
     assert instance.qdrant.count(instance.collection_name).count == 0
+
+
+@pytest.mark.parametrize("paragraph", ["这是测试长篇原文，必须保留上下文。", "无分隔符长文本"])
+def test_long_section_is_bounded_and_preserves_source(indexer, monkeypatch, paragraph):
+    instance, vault = indexer
+    batches = []
+
+    def embed(texts):
+        batches.extend(texts)
+        return [[1.0, 0.0, 0.0] for _ in texts]
+
+    monkeypatch.setattr(instance, "_embed", embed)
+    (vault / "note.md").write_text(
+        "---\nsource: https://example.com/long\n---\n# 长篇复盘\n"
+        + paragraph * 500 + "结尾核对标记",
+        encoding="utf-8",
+    )
+    count = instance.index_vault(str(vault))
+    assert count > 1
+    assert all(len(text) <= 1500 for text in batches)
+    assert any("结尾核对标记" in text for text in batches)
+    records, _ = instance.qdrant.scroll(instance.collection_name, limit=100)
+    assert len(records) == count
+    assert all(record.payload["source_url"] == "https://example.com/long" for record in records)
+    assert all(record.payload["h1"] == "长篇复盘" for record in records)
