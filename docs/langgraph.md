@@ -54,6 +54,8 @@ Invoke-RestMethod -Method Post -Uri http://localhost:8000/api/ask_knowledge -Con
 
 ### 子文件夹笔记
 
+网页侧栏「笔记列表」展示当前知识目录中的 Markdown 相对路径、字节数及修改时间，支持筛选和刷新。列表来自本地文件，显示已保存文件不代表已成功索引；新增或更新后仍需建立索引。对应只读接口为 GET /api/knowledge/documents，不调用模型。
+
 索引会读取挂载目录及其子目录中的 `.md` 文件。来源保留相对路径，例如 `广告/note.md` 和 `选品/note.md`，同名文件不会互相覆盖。根目录已有笔记继续使用原索引标识，无需重建集合。隐藏文件和隐藏目录（例如 `.trash`）不参与索引，符号链接文件及解析到知识库之外的路径也不会读取。
 
 ## CLI / Studio

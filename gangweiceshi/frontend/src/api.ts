@@ -11,6 +11,15 @@ export type IndexStatus = {
   finished_at: string | null;
 };
 
+export type DocumentsResponse = {
+  documents: { path: string; size_bytes: number; modified_at: string }[];
+  total: number;
+};
+
+export function getDocuments() {
+  return request<DocumentsResponse>("/api/knowledge/documents");
+}
+
 export function getIndexStatus() {
   return request<IndexStatus>("/api/knowledge/index");
 }

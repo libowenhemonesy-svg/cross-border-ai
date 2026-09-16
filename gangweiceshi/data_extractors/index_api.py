@@ -2,13 +2,35 @@
 import asyncio
 import logging
 from datetime import datetime, timezone
+from pathlib import Path
 
-from fastapi import APIRouter, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, HTTPException
+from knowledge_files import markdown_files
 
 
 def create_index_router(get_indexer, vault_path):
     router = APIRouter()
     state = {"status": "idle", "chunks": None, "error": "", "finished_at": None}
+
+    def list_documents():
+        vault = Path(vault_path)
+        files = markdown_files(vault)
+        documents = []
+        for path in files:
+            stat = path.stat()
+            documents.append({
+                "path": path.relative_to(vault).as_posix(),
+                "size_bytes": stat.st_size,
+                "modified_at": datetime.fromtimestamp(stat.st_mtime, timezone.utc).isoformat(),
+            })
+        return {"documents": documents, "total": len(documents)}
+
+    @router.get("/api/knowledge/documents")
+    async def documents():
+        try:
+            return await asyncio.to_thread(list_documents)
+        except OSError as exc:
+            raise HTTPException(503, "无法读取笔记列表，请检查目录权限后刷新") from exc
 
     async def run():
         try:

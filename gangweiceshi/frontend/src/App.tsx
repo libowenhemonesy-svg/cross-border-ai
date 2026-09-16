@@ -18,6 +18,8 @@ import {
   AskResponse,
   ContentResponse,
   processContent,
+  DocumentsResponse,
+  getDocuments,
   IndexStatus,
   getIndexStatus,
   startIndex,
@@ -34,7 +36,7 @@ import {
 } from "./api";
 import "./styles.css";
 
-type View = "dashboard" | "bilibili" | "wechat" | "daily" | "search" | "ask" | "content";
+type View = "dashboard" | "bilibili" | "wechat" | "daily" | "search" | "ask" | "content" | "documents";
 
 type AsyncState<T> = {
   loading: boolean;
@@ -80,6 +82,7 @@ function App() {
         </div>
 
         <nav className="nav-list">
+          <NavButton icon={<Archive />} label="笔记列表" active={view === "documents"} onClick={() => setView("documents")} />
           <NavButton icon={<FileText />} label="整理原文" active={view === "content"} onClick={() => setView("content")} />
           <NavButton icon={<BookOpenText />} label="知识问答" active={view === "ask"} onClick={() => setView("ask")} />
           <NavButton icon={<Activity />} label="总览" active={view === "dashboard"} onClick={() => setView("dashboard")} />
@@ -110,9 +113,36 @@ function App() {
         {view === "search" && <SearchPanel />}
         {view === "ask" && <AskPanel />}
         {view === "content" && <ContentPanel />}
+        {view === "documents" && <DocumentsPanel />}
       </main>
     </div>
   );
+}
+
+function DocumentsPanel() {
+  const [state, setState] = useAsyncState<DocumentsResponse>();
+  const [filter, setFilter] = useState("");
+  const refresh = async () => {
+    setState({ loading: true, error: "", data: null });
+    try { setState({ loading: false, error: "", data: await getDocuments() }); }
+    catch (error) { setState({ loading: false, error: getErrorMessage(error), data: null }); }
+  };
+  useEffect(() => { void refresh(); }, []);
+  const visible = state.data?.documents.filter((document) => document.path.toLowerCase().includes(filter.toLowerCase())) ?? [];
+  return <section className="stack">
+    <FormCard title="已保存的笔记" description="已保存不等于已索引。新增或修改笔记后，请点击上方建立 / 更新索引。">
+      <div className="form-stack">
+        <TextInput label="按文件名或文件夹筛选" value={filter} onChange={setFilter} placeholder="例如：广告" />
+        <button className="ghost-button" onClick={refresh} disabled={state.loading}>刷新笔记列表</button>
+        <p role="status">{state.loading ? "正在读取笔记…" : state.error || (state.data ? `共 ${state.data.total} 篇笔记，当前匹配 ${visible.length} 篇` : "")}</p>
+        {state.data && visible.length === 0 && <p className="muted">{state.data.total === 0 ? "尚无可索引笔记，请先整理原文并保存。" : "没有匹配的笔记，请调整筛选条件。"}</p>}
+        {visible.map((document) => <div className="metric" key={document.path}>
+          <strong>{document.path}</strong>
+          <span>{document.size_bytes} 字节 · 更新于 {new Date(document.modified_at).toLocaleString()}</span>
+        </div>)}
+      </div>
+    </FormCard>
+  </section>;
 }
 
 function IndexWorkflow({ setView }: { setView: (view: View) => void }) {
@@ -604,6 +634,7 @@ function EmptyBlock() {
 function getViewTitle(view: View) {
   return {
     dashboard: "系统总览",
+    documents: "知识库笔记列表",
     bilibili: "B站视频处理",
     wechat: "微信公众号处理",
     daily: "统一日报",
