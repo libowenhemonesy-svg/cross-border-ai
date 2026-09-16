@@ -1399,10 +1399,13 @@ async def unified_daily(
     if wechat_task is None:
         results.append(None)
 
+    succeeded = sum(result is not None and not isinstance(result, Exception) for result in results)
+    report_status = "ok" if succeeded == 2 else "partial" if succeeded else "failed"
+
     # 解析 B站结果
     if isinstance(results[0], Exception):
-        logger.warning(f"[UnifiedDaily] B站日报失败: {results[0]}")
-        bili_text = "## 📺 B站\n> 今日暂无可处理内容\n"
+        logger.warning("[UnifiedDaily] B站日报失败，错误类型=%s", type(results[0]).__name__)
+        bili_text = "## 📺 B站\n> 日报生成失败，请检查平台登录、网络及模型配置后重试。\n"
     else:
         bili_title, bili_text, bili_count, bili_items = results[0]
         for item in bili_items:
@@ -1413,8 +1416,8 @@ async def unified_daily(
     if results[1] is None:
         wechat_text = "## 📱 微信公众号\n> 微信服务未就绪，已跳过\n"
     elif isinstance(results[1], Exception):
-        logger.warning(f"[UnifiedDaily] 微信日报失败: {results[1]}")
-        wechat_text = "## 📱 微信公众号\n> 暂无可处理内容\n"
+        logger.warning("[UnifiedDaily] 微信日报失败，错误类型=%s", type(results[1]).__name__)
+        wechat_text = "## 📱 微信公众号\n> 日报生成失败，请检查平台登录、网络及模型配置后重试。\n"
     else:
         wechat_title, wechat_text, wechat_count, wechat_found, wechat_items = results[1]
         for item in wechat_items:
@@ -1547,7 +1550,7 @@ async def unified_daily(
     logger.info(f"[UnifiedDaily] 完成: B站{bili_count} + 微信{wechat_count} = {total_processed}")
 
     return UnifiedDailyResponse(
-        status="ok",
+        status=report_status,
         report_title=report_title,
         report_text=report_text,
         bili_processed=bili_count,
