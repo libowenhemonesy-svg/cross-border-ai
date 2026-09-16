@@ -165,7 +165,7 @@ def test_daily_runs_both_available_sources(backend, monkeypatch):
     monkeypatch.setattr(backend, "wechat_tracker", object())
     monkeypatch.setattr(backend, "wechat_extractor", object())
     bili = AsyncMock(return_value=(backend.BiliDailyResponse(status="ok", report_text="B站正文"), []))
-    wechat = AsyncMock(return_value=("测试微信日报", "微信正文", 0, 0, []))
+    wechat = AsyncMock(return_value=(backend.WechatDailyResponse(status="ok", report_text="微信正文"), []))
     monkeypatch.setattr(backend, "_run_bilibili_daily", bili)
     monkeypatch.setattr(backend, "_run_wechat_daily", wechat)
     response = TestClient(backend.app).post("/api/unified_daily")
@@ -190,7 +190,7 @@ def test_daily_reports_platform_failure(backend, monkeypatch, caplog,
     ))
     monkeypatch.setattr(backend, "_run_wechat_daily", AsyncMock(
         side_effect=RuntimeError("PRIVATE_PROVIDER_ERROR") if wechat_failed else None,
-        return_value=("微信", "微信成功内容", 1, 1, []),
+        return_value=(backend.WechatDailyResponse(status="ok", report_text="微信成功内容", processed=1, discovered=1), []),
     ))
     response = TestClient(backend.app).post("/api/unified_daily")
     assert response.status_code == 200
@@ -291,6 +291,63 @@ def test_unified_daily_preserves_bili_failure_status(backend, monkeypatch,
     monkeypatch.setattr(backend, "_run_bilibili_daily", AsyncMock(return_value=(
         backend.BiliDailyResponse(status=bili_status, failed=1), [],
     )))
-    monkeypatch.setattr(backend, "_run_wechat_daily", AsyncMock(return_value=("微信", "正文", 0, 0, [])))
+    monkeypatch.setattr(backend, "_run_wechat_daily", AsyncMock(return_value=(backend.WechatDailyResponse(status="ok", report_text="正文"), [])))
     response = TestClient(backend.app).post("/api/unified_daily")
     assert response.json()["status"] == expected
+
+
+@pytest.mark.parametrize("outcomes,expected", [([], "ok"), ([True], "ok"), ([False], "failed"), ([True, False], "partial")])
+def test_wechat_daily_actual_outcomes(backend, monkeypatch, caplog, outcomes, expected):
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+    from ai_processor import ExtractedContent
+    tracker = Mock()
+    tracker.discover_new_articles.return_value = [
+        SimpleNamespace(url=f"https://example.com/{i}", biz="test") for i in range(len(outcomes))
+    ]
+    tracker.get_accounts.return_value = []
+    extractor = Mock()
+    extractor.extract.return_value = SimpleNamespace(title="测试文章", author="测试")
+    processor = Mock()
+    processor.extract_async = AsyncMock(side_effect=[
+        ExtractedContent(summary="测试摘要") if ok else RuntimeError("PRIVATE_WECHAT_ERROR")
+        for ok in outcomes
+    ])
+    monkeypatch.setattr(backend, "wechat_tracker", tracker)
+    monkeypatch.setattr(backend, "wechat_extractor", extractor)
+    monkeypatch.setattr(backend, "processor", processor)
+    monkeypatch.setattr(backend, "_build_wechat_ai_input", lambda _: "测试原文")
+    write = Mock(return_value="test.md")
+    monkeypatch.setattr(backend, "write_to_vault", write)
+    response = TestClient(backend.app).post("/api/wechat/daily")
+    assert response.status_code == 200
+    result = response.json()
+    assert result["status"] == expected
+    assert result["processed"] == sum(outcomes)
+    assert result["failed"] == outcomes.count(False)
+    assert len(result["details"]) == len(outcomes)
+    assert write.call_count == tracker.mark_processed.call_count == sum(outcomes)
+    assert "PRIVATE_WECHAT_ERROR" not in response.text + caplog.text
+
+
+@pytest.mark.parametrize("bili_status", ["ok", "partial", "failed"])
+@pytest.mark.parametrize("wechat_status", ["ok", "partial", "failed"])
+def test_unified_daily_status_matrix(backend, monkeypatch, bili_status, wechat_status):
+    monkeypatch.setattr(backend, "wechat_tracker", object())
+    monkeypatch.setattr(backend, "wechat_extractor", object())
+    monkeypatch.setattr(backend, "_run_bilibili_daily", AsyncMock(return_value=(
+        backend.BiliDailyResponse(status=bili_status), [],
+    )))
+    monkeypatch.setattr(backend, "_run_wechat_daily", AsyncMock(return_value=(
+        backend.WechatDailyResponse(status=wechat_status), [],
+    )))
+    expected = bili_status if bili_status == wechat_status else "partial"
+    assert TestClient(backend.app).post("/api/unified_daily").json()["status"] == expected
+
+
+@pytest.mark.parametrize("exception,code", [(RuntimeError, 503), (ValueError, 500)])
+def test_wechat_daily_endpoint_hides_internal_error(backend, monkeypatch, caplog, exception, code):
+    monkeypatch.setattr(backend, "_run_wechat_daily", AsyncMock(side_effect=exception("PRIVATE_DETAIL")))
+    response = TestClient(backend.app).post("/api/wechat/daily")
+    assert response.status_code == code
+    assert "PRIVATE_DETAIL" not in response.text + caplog.text
