@@ -10,7 +10,7 @@ import os
 from dataclasses import asdict
 from datetime import datetime, timezone, timedelta
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
@@ -797,7 +797,7 @@ async def wechat_accounts():
 
 
 @app.post("/api/wechat/daily", response_model=WechatDailyResponse)
-async def wechat_daily(max_articles: int = 10):
+async def wechat_daily(max_articles: int = Query(default=10, ge=1, le=30)):
     """一键日报端点：发现追踪账号的新文章 → AI 提炼 → 生成 Markdown 报告"""
     try:
         report, _ = await _run_wechat_daily(max_articles)
@@ -1373,7 +1373,7 @@ async def _run_wechat_daily(
 
 @app.post("/api/bilibili/daily", response_model=BiliDailyResponse)
 async def bilibili_daily(
-    max_videos: int = 10,
+    max_videos: int = Query(default=10, ge=1, le=20),
     filter_keywords: str = "",
 ):
     """一键日报: 获取关注动态 → 去重 → 批量转录 → 生成 Markdown 报告"""
@@ -1388,8 +1388,8 @@ async def bilibili_daily(
 
 @app.post("/api/unified_daily", response_model=UnifiedDailyResponse)
 async def unified_daily(
-    max_videos: int = 10,
-    max_articles: int = 2,
+    max_videos: int = Query(default=10, ge=1, le=20),
+    max_articles: int = Query(default=2, ge=1, le=30),
     filter_keywords: str = "亚马逊,跨境电商,选品,FBA,卖家,Listing,运营,跨境,电商,广告",
 ):
     """全平台统一日报: B站 + 微信公众号 合并为一份日报
