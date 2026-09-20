@@ -151,20 +151,23 @@ function IndexWorkflow({ setView }: { setView: (view: View) => void }) {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
+    if (submitting) return;
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout>;
     const poll = async () => {
+      let delay = 30000;
       try {
         const result = await getIndexStatus();
+        if (result.status === "running") delay = 2000;
         if (!cancelled) { setStatus(result); setError(""); }
       } catch (err) {
         if (!cancelled) setError(getErrorMessage(err));
       }
-      if (!cancelled) timer = setTimeout(poll, 2000);
+      if (!cancelled) timer = setTimeout(poll, delay);
     };
     void poll();
     return () => { cancelled = true; clearTimeout(timer); };
-  }, []);
+  }, [submitting]);
 
   const start = async () => {
     setSubmitting(true);
