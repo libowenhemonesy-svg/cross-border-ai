@@ -351,3 +351,39 @@ def test_wechat_daily_endpoint_hides_internal_error(backend, monkeypatch, caplog
     response = TestClient(backend.app).post("/api/wechat/daily")
     assert response.status_code == code
     assert "PRIVATE_DETAIL" not in response.text + caplog.text
+
+
+@pytest.mark.parametrize("endpoint,field,maximum", [
+    ("/api/bilibili/daily", "max_videos", 20),
+    ("/api/wechat/daily", "max_articles", 30),
+    ("/api/unified_daily", "max_videos", 20),
+    ("/api/unified_daily", "max_articles", 30),
+])
+@pytest.mark.parametrize("value", [0, -1, "too_large", "1.5", "invalid"])
+def test_daily_invalid_limits_never_start_work(backend, monkeypatch, endpoint, field, maximum, value):
+    bili, wechat = AsyncMock(), AsyncMock()
+    monkeypatch.setattr(backend, "_run_bilibili_daily", bili)
+    monkeypatch.setattr(backend, "_run_wechat_daily", wechat)
+    response = TestClient(backend.app, raise_server_exceptions=False).post(
+        endpoint, params={field: maximum + 1 if value == "too_large" else value},
+    )
+    assert response.status_code == 422
+    bili.assert_not_awaited()
+    wechat.assert_not_awaited()
+
+
+@pytest.mark.parametrize("videos,articles", [(1, 1), (20, 30)])
+def test_daily_limits_accept_boundaries(backend, monkeypatch, videos, articles):
+    bili = AsyncMock(return_value=(backend.BiliDailyResponse(status="ok"), []))
+    wechat = AsyncMock(return_value=(backend.WechatDailyResponse(status="ok"), []))
+    monkeypatch.setattr(backend, "_run_bilibili_daily", bili)
+    monkeypatch.setattr(backend, "_run_wechat_daily", wechat)
+    monkeypatch.setattr(backend, "wechat_tracker", object())
+    monkeypatch.setattr(backend, "wechat_extractor", object())
+    client = TestClient(backend.app)
+    assert client.post("/api/bilibili/daily", params={"max_videos": videos}).status_code == 200
+    assert client.post("/api/wechat/daily", params={"max_articles": articles}).status_code == 200
+    assert client.post("/api/unified_daily", params={"max_videos": videos, "max_articles": articles}).status_code == 200
+    assert bili.await_count == wechat.await_count == 2
+    assert bili.call_args.args[0] == videos
+    assert wechat.call_args.args[0] == articles
